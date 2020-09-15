@@ -337,28 +337,66 @@ and expect_ident b =
     | IDENT s -> shift b; s
     | t    -> failwith "Ident expected"
 
-and parse_expr b =
+
+
+    
+(* logical    = relational (and|or relational)*                     *)
+(* relational = term ((<|>|==|!=) term)* *)
+(* term       = factor ((+|-) factor)*                  *)
+(* factor     = atom ((*|/) atom)*                      *)
+(* atom       = (-|not) atom_expr                       *)*)
+and parse_atom b = 
   match next_token b with
-    | NOT -> shift b; Unop(Not, parse_atom_expr b)
-    | SUB -> shift b; Unop(Sub, parse_atom_expr b)
-    | _ -> let e1 = parse_atom_expr b in
-  match next_token b with
-    | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ | AND | OR as op ->
-      shift b; let e2 = parse_expr b in
-	       let op = match op with
-		      | ADD  -> Add
-		      | SUB  -> Sub
-		      | MULT -> Mult
-          | DIV -> Div
-          | LT   -> Lt
-          | GT   -> Gt
-          | EQ -> Eq
-          | NEQ -> Neq
-          | AND -> And
-          | OR -> Or
-		      | _    -> assert false
-               in Binop(op, e1, e2)
+  | NOT -> shift b; Unop(Not, parse_atom_expr b)
+  | SUB -> shift b; Unop(Sub, parse_atom_expr b)
+  | _ -> parse_atom_expr b
+and parse_factor b = 
+    let e1 = parse_atom b in
+    match next_token b with
+    | MULT | DIV as op ->
+      shift b; let e2 = parse_atom b in
+          let op = match op with
+            | MULT -> Mult
+            | DIV -> Div
+            | _ -> assert false
+            in Binop(op, e1, e2)
     | _ -> e1
+and parse_term b = 
+let e1 = parse_factor b in
+match next_token b with
+| ADD | SUB as op ->
+  shift b; let e2 = parse_factor b in
+      let op = match op with
+        | ADD -> Add
+        | SUB -> Sub
+        | _ -> assert false
+        in Binop(op, e1, e2)
+| _ -> e1
+and parse_relational b = 
+    let e1 = parse_term b in
+    match next_token b with
+    | LT | GT | EQ | NEQ as op ->
+        shift b; let e2 = parse_term b in
+            let op = match op with
+              | LT -> Lt
+              | GT -> Gt
+              | EQ -> Eq
+              | NEQ -> Neq
+              | _ -> assert false
+              in Binop(op, e1, e2)
+    | _ -> e1
+and parse_expr b =
+  let e1 = parse_relational b in
+  match next_token b with
+    | AND | OR as op ->
+      shift b; let e2 = parse_relational b in
+	       let op = match op with
+		      | AND  -> And
+		      | OR  -> Or
+          | _ -> assert false
+          in Binop(op, e1, e2)
+    | _ -> e1;
+    (*| _ -> failwith (sprintf "bad token %s %s" (token_to_string (next_token b)) (sprint_location b.input))*)
 
 and parse_atom_expr b =
   match next_token b with
@@ -534,7 +572,7 @@ let prog =
     continue := false;
     j := 0;
     while (j < arg+1) {
-      if (i*i + j*j < arg*arg) {
+      if (-(i*i + j*j) > -arg*arg) {
         print(46);
         continue := true;
       } else {
