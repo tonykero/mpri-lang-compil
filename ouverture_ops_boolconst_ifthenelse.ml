@@ -30,6 +30,8 @@
       régulièrement dans les structures de données utilisées lors des analyses
       lexicale ou syntaxique, ou lors de l'évaluation.
 
+        (Fait)
+
    3. Modifier la grammaire des expressions arithmétiques pour se rapprocher
       des règles habituelles.
 *******************************************************************************)
@@ -48,6 +50,7 @@ type token =
   | LP | RP (* (, ) *)
   | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ  (* < *)
   | TRUE | FALSE
+  | AND | OR
   | IF | ELSE
   | EOF | BOF  (* fin de fichier, début de fichier *)
 
@@ -167,6 +170,8 @@ and read_word b =
   | "false" -> FALSE
   | "if" -> IF
   | "else" -> ELSE
+  | "and" -> AND
+  | "or" -> OR
 	(* Sinon, c'est un identificateur. *)
 	| id -> IDENT id
     )
@@ -201,6 +206,8 @@ let token_to_string = function
   | WHILE -> "WHILE"
   | TRUE -> "TRUE"
   | FALSE -> "FALSE"
+  | AND -> "AND"
+  | OR -> "OR"
   | IF -> "IF"
   | ELSE -> "ELSE"
 (** Syntaxe abstraite *)
@@ -226,7 +233,9 @@ and expression =
   | Location of string
   | Binop    of binop * expression * expression
 and binop =
-  | Add | Sub | Mult | Div | Lt | Gt | Eq | Neq
+  | Add | Sub | Mult | Div
+  | Lt | Gt | Eq | Neq
+  | And | Or
 
 
 (** Analyse syntaxique  *)
@@ -321,18 +330,20 @@ and expect_ident b =
 and parse_expr b =
   let e1 = parse_atom_expr b in
   match next_token b with
-    | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ as op ->
+    | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ | AND | OR as op ->
       shift b; let e2 = parse_expr b in
 	       let op = match op with
-		 | ADD  -> Add
-		 | SUB  -> Sub
-		 | MULT -> Mult
-     | DIV -> Div
-     | LT   -> Lt
-     | GT   -> Gt
-     | EQ -> Eq
-     | NEQ -> Neq
-		 | _    -> assert false
+		      | ADD  -> Add
+		      | SUB  -> Sub
+		      | MULT -> Mult
+          | DIV -> Div
+          | LT   -> Lt
+          | GT   -> Gt
+          | EQ -> Eq
+          | NEQ -> Neq
+          | AND -> And
+          | OR -> Or
+		      | _    -> assert false
                in Binop(op, e1, e2)
     | _ -> e1
 
@@ -360,9 +371,11 @@ let print_binop = function
   | Gt -> ">"
   | Eq -> "=="
   | Neq -> "!="
+  | And -> "and"
+  | Or -> "or"
 let rec print_expr = function
   | Literal lit -> print_literal lit
-  | Literal_bool lit -> print_literal (int_of_bool lit)
+  | Literal_bool lit -> (sprintf "%b" lit)
   | Location id -> print_location id
   | Binop(op, e1, e2) -> sprintf "( %s %s %s )" (print_expr e1) (print_binop op) (print_expr e2)
 
@@ -388,6 +401,21 @@ type value =
   
 module State = Map.Make(String)
 type state = value State.t
+
+let do_arithmetic op i1 i2 =
+    match op with
+      | Add -> Int (i1 + i2)
+      | Sub -> Int (i1 - i2)
+      | Mult -> Int (i1 * i2)
+      | Div -> Int (i1 / i2)
+      | Gt -> Bool (i1 > i2)
+      | Lt -> Bool (i1 < i2)
+      | _ -> (failwith "Unknown arithmetic op")
+let do_logical op i1 i2 = 
+    match op with
+      | And -> Bool (i1 && i2)
+      | Or -> Bool (i1 || i2)
+      | _ -> (failwith "Unkown logical op")
   
 (* [eval_main: main -> unit] *)
 let rec eval_program p x =
@@ -433,31 +461,32 @@ and eval_instruction env = function
   | Sequence (i1, i2) ->
     let env = eval_instruction env i1 in
     eval_instruction env i2
-
 (* [eval_expression: state -> expression -> int] *)
 and eval_expression env = function
   | Literal i -> Int i
-  | Literal_bool b -> Int (int_of_bool  b)
+  | Literal_bool b -> Bool b
   | Location id -> State.find id env
   | Binop(op, e1, e2) -> let v1 = eval_expression env e1 in
 			 let v2 = eval_expression env e2 in
-                         let i1, i2 = match v1, v2 with
-                           | Int i1, Int i2 -> i1, i2
-                           | _ , Int i2  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e1))
-                           | Int i1 , _  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e2))
-                           | _ -> failwith (sprintf "Expected integer values in %s" (print_expr (Binop(op, e1, e2))))
-                         in
-			 let v = match op with
-			   | Add  -> Int (i1 + i2)
-			   | Sub  -> Int (i1 - i2)
-			   | Mult -> Int (i1 * i2)
-			   | Div -> Int (i1 / i2)
-			   | Lt   -> Bool (i1 < i2)
-         | Gt   -> Bool (i1 > i2)
-         | Eq   -> Bool (i1 == i2)
-         | Neq   -> Bool (i1 != i2)
-        in
-                         v
+       let v = match op with
+        (*integer-only*)
+         | Add | Sub | Mult | Div | Gt | Lt -> let v = match v1, v2 with
+                                              | Int i1, Int i2 -> (do_arithmetic op i1 i2)
+                                              | _ , Int i2  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e1))
+                                              | Int i1 , _  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e2))
+                                              | _ -> failwith (sprintf "Expected integer values in %s" (print_expr (Binop(op, e1, e2))))  
+                                              in v
+        (*boolean-only*)
+        | And | Or -> let v = match v1, v2 with
+                                | Bool i1, Bool i2 -> (do_logical op i1 i2)
+                                | _ , Bool i2  -> failwith (sprintf "Expected boolean values in expr %s" (print_expr e1))
+                                | Bool i1 , _  -> failwith (sprintf "Expected boolean values in expr %s" (print_expr e2))
+                                | _ -> failwith (sprintf "Expected boolean values in %s" (print_expr (Binop(op, e1, e2))))
+                                in v
+        (*both*)
+         | Eq   -> Bool (v1 == v2)
+         | Neq   -> Bool (v1 != v2)
+                              in v
 
 (* Test final : interprétation du programme donné au début. *)
 let main s x =
@@ -469,16 +498,16 @@ let main s x =
 
 let prog =
 "main {
-    continue := true;
+    b := true;
     a := true;
-    if(1 == ) {
+    if(1 == b) {
       printi(1);
       printi(2 + 3 * 5);
       printi( (2+3) * 5 );
       printi( 2 + 3 * (5 - 1) )
     }
     else {
-      printi(a)
+      printi(1 - false)
     }
 }
 "
