@@ -229,6 +229,7 @@ and instruction =
   | If       of expression * instruction
   | Else     of instruction
   | If_Else  of expression * instruction * instruction
+  | None
 (* Une expression est une constante, une variable, ou une opération binaire. *)
 and expression =
   | Literal       of int
@@ -300,8 +301,10 @@ and parse_block b =
 and parse_instr b =
   let i1 = parse_atom_instr b in
   match next_token b with
-    | SEMI -> shift b; let i2 = parse_instr b in Sequence(i1, i2)
-    | _    -> i1
+    | SEMI -> shift b; if next_token b == END then
+                        Sequence(i1, None)
+    else let i2 = parse_instr b in Sequence(i1, i2)
+    | _    -> i1 
       
 and parse_atom_instr ?(if_c=false) b =
   match next_token b with
@@ -403,6 +406,7 @@ and print_instr o = function
   | If(e, i) -> sprintf "if (%s) {\n%s}" (print_expr e) (print_instr o i)
   | Else(i) -> sprintf "else {\n%s}" (print_instr o i)
   | If_Else(e, i1, i2) -> sprintf "if (%s) {\n%s} else {\n%s}" (print_expr e) (print_o_instr o i1) (print_o_instr o i2)
+  | None -> sprintf ""
 let print_program p = sprintf "main {\n%s}" (print_o_instr 1 p) 
 
 
@@ -474,6 +478,7 @@ and eval_instruction env = function
   | Sequence (i1, i2) ->
     let env = eval_instruction env i1 in
     eval_instruction env i2
+  | None -> env
 (* [eval_expression: state -> expression -> int] *)
 and eval_expression env = function
   | Literal i -> Int i
@@ -529,18 +534,18 @@ let prog =
     continue := false;
     j := 0;
     while (j < arg+1) {
-      if ((i*i + j*j) < arg*arg) {
+      if (i*i + j*j < arg*arg) {
         print(46);
-        continue := true
+        continue := true;
       } else {
-        print(35)
+        print(35);
       };
       print(32);
-      j := j+1
+      j := j+1;
     };
     print(10);
-    i := i+1
-  }
+    i := i+1;
+  };
 }
 "
 
