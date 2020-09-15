@@ -21,6 +21,7 @@
         (Added printi built-in)
         (Added bool constants + implict conversion in binop)
         (Added If(e){i} and If(e){i1}else{i2} constructs, else{i} construct raise exception)
+        (Added and or)
 
    2. En cas d'erreur de lexique, de grammaire ou de type, produire un
       message d'erreur plus instructif, donnant par exemple la position de
