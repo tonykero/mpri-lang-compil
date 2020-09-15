@@ -51,7 +51,7 @@ type token =
   | LP | RP (* (, ) *)
   | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ  (* < *)
   | TRUE | FALSE
-  | AND | OR
+  | AND | OR | NOT
   | IF | ELSE
   | EOF | BOF  (* fin de fichier, début de fichier *)
 
@@ -173,6 +173,7 @@ and read_word b =
   | "else" -> ELSE
   | "and" -> AND
   | "or" -> OR
+  | "not" -> NOT
 	(* Sinon, c'est un identificateur. *)
 	| id -> IDENT id
     )
@@ -209,6 +210,7 @@ let token_to_string = function
   | FALSE -> "FALSE"
   | AND -> "AND"
   | OR -> "OR"
+  | NOT -> "NOT"
   | IF -> "IF"
   | ELSE -> "ELSE"
 (** Syntaxe abstraite *)
@@ -231,12 +233,16 @@ and instruction =
 and expression =
   | Literal       of int
   | Literal_bool  of bool
-  | Location of string
-  | Binop    of binop * expression * expression
+  | Location  of string
+  | Binop     of binop * expression * expression
+  | Unop      of unop * expression
 and binop =
   | Add | Sub | Mult | Div
   | Lt | Gt | Eq | Neq
   | And | Or
+and unop =
+  | Not
+  | Sub
 
 
 (** Analyse syntaxique  *)
@@ -329,7 +335,10 @@ and expect_ident b =
     | t    -> failwith "Ident expected"
 
 and parse_expr b =
-  let e1 = parse_atom_expr b in
+  match next_token b with
+    | NOT -> shift b; Unop(Not, parse_atom_expr b)
+    | SUB -> shift b; Unop(Sub, parse_atom_expr b)
+    | _ -> let e1 = parse_atom_expr b in
   match next_token b with
     | ADD | SUB | MULT | DIV | LT | GT | EQ | NEQ | AND | OR as op ->
       shift b; let e2 = parse_expr b in
@@ -374,12 +383,15 @@ let print_binop = function
   | Neq -> "!="
   | And -> "and"
   | Or -> "or"
+let print_unop = function
+  | Not -> "not"
+  | Sub -> "-"
 let rec print_expr = function
   | Literal lit -> print_literal lit
   | Literal_bool lit -> (sprintf "%b" lit)
   | Location id -> print_location id
   | Binop(op, e1, e2) -> sprintf "( %s %s %s )" (print_expr e1) (print_binop op) (print_expr e2)
-
+  | Unop(op, e) -> sprintf "(%s %s)" (print_unop op) (print_expr e)
 let offset o = String.make (2*o) ' '
 let rec print_o_instr o i = (offset o) ^ (print_instr o i)
 and print_instr o = function
@@ -411,12 +423,12 @@ let do_arithmetic op i1 i2 =
       | Div -> Int (i1 / i2)
       | Gt -> Bool (i1 > i2)
       | Lt -> Bool (i1 < i2)
-      | _ -> (failwith "Unknown arithmetic op")
+      | _ -> failwith (sprintf "Unknown arithmetic op %s" (print_binop op))
 let do_logical op i1 i2 = 
     match op with
       | And -> Bool (i1 && i2)
       | Or -> Bool (i1 || i2)
-      | _ -> (failwith "Unkown logical op")
+      | _ -> failwith (sprintf "Unknown logical op %s" (print_binop op))
   
 (* [eval_main: main -> unit] *)
 let rec eval_program p x =
@@ -488,6 +500,17 @@ and eval_expression env = function
          | Eq   -> Bool (v1 == v2)
          | Neq   -> Bool (v1 != v2)
                               in v
+  | Unop(op, e) -> let v1 = (eval_expression env e) in
+                   let v = match op with
+                            | Not -> let v = match v1 with
+                                            | Bool b -> Bool (not b)
+                                            | _ -> failwith (sprintf "Expected boolean value in expr %s" (print_expr e))
+                                            in v
+                            | Sub -> let v = match v1 with
+                                            | Int i -> Int (-i)
+                                            | _ -> failwith (sprintf "Expected integer value in expr %s" (print_expr e))
+                                            in v
+                            in v
 
 (* Test final : interprétation du programme donné au début. *)
 let main s x =
@@ -499,17 +522,25 @@ let main s x =
 
 let prog =
 "main {
-    b := true;
-    a := true;
-    if(1 == b) {
-      printi(1);
-      printi(2 + 3 * 5);
-      printi( (2+3) * 5 );
-      printi( 2 + 3 * (5 - 1) )
-    }
-    else {
-      printi(1 - false)
-    }
+  continue := true;
+  i := 0;
+
+  while (continue) {
+    continue := false;
+    j := 0;
+    while (j < arg+1) {
+      if ((i*i + j*j) < arg*arg) {
+        print(46);
+        continue := true
+      } else {
+        print(35)
+      };
+      print(32);
+      j := j+1
+    };
+    print(10);
+    i := i+1
+  }
 }
 "
 
@@ -554,7 +585,18 @@ let _ = main prog 36
 . . . . . . . . . . . . # # # # # # # # # # # # # # # # # # # # # # # # # 
 . . . . . . . . . # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
+main {
+    b := false;
+    a := true;
+    if((b) and not a) {
+      printi(-1);
+      printi(2 + 3 * 5);
+      printi( (-(2+3)) * 5 );
+      printi( 2 + 3 * (5 - 1) )
+    } else {
+      printi(1 - -1)
+    }
+}
 *)
 
 (**
