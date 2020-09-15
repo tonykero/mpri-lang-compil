@@ -19,9 +19,11 @@
     
         ( Added - / >)
         (Added printi built-in)
-        (Added bool constants + implict conversion in binop)
+        (Added bool constants)
         (Added If(e){i} and If(e){i1}else{i2} constructs, else{i} construct raise exception)
-        (Added and or)
+        (Implemented optional SEMI colon to end instruction block)
+        (Added and or logical operators)
+        (Added not sub unary operators)
 
    2. En cas d'erreur de lexique, de grammaire ou de type, produire un
       message d'erreur plus instructif, donnant par exemple la position de
@@ -35,6 +37,7 @@
 
    3. Modifier la grammaire des expressions arithmétiques pour se rapprocher
       des règles habituelles.
+      (Priorité des opérateurs)
 *******************************************************************************)
 
 
@@ -583,7 +586,7 @@ let prog =
     };
     print(10);
     i := i+1;
-  };
+  }
 }
 "
 
