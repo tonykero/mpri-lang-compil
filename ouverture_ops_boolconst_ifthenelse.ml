@@ -58,6 +58,9 @@ type input_buffer = {
   (* Début du mot analysé, et position courante *)
   mutable start_pos: int;
   mutable next_pos: int;
+
+  mutable col_pos: int;
+  mutable line_pos: int;
 }
 
 (* Initialisation *)
@@ -66,6 +69,9 @@ let init_buffer s = {
   length = String.length s;
   start_pos = 0;
   next_pos = 0;
+  
+  col_pos = 0;
+  line_pos = 1;
 }
 
 exception Eof
@@ -77,8 +83,11 @@ let next_char b =
   else raise Eof
 
 (* Faire avancer le curseur *)
-let shift b = b.next_pos <- b.next_pos + 1
-  
+let shift b = b.col_pos <- b.col_pos + 1;b.next_pos <- b.next_pos + 1
+let newline b = b.col_pos <- 0; b.line_pos <- b.line_pos + 1
+
+let sprint_location b = (Printf.sprintf "at col %d line %d" b.col_pos b.line_pos)
+
 (* Marquer le début du lexème en cours d'analyse *)
 let init_pos b = b.start_pos <- b.next_pos
 
@@ -114,9 +123,10 @@ let rec read_token b =
     (* On ignore les blancs (espaces, tabulations, retours chariot, etc.).
        Dans ce cas, on relance immédiatement l'analyse à partir du caractère
        suivant avec un nouvel appel à [read_token]. *)
-    | ' ' | '\n' -> shift b; read_token b
+    | ' ' -> shift b; read_token b
+    | '\n' -> shift b; newline b; read_token b
     (* Tout autre caractère est une erreur. *)
-    | c   -> failwith (Printf.sprintf "Unrecognized character: %c" c)
+    | c   -> failwith (Printf.sprintf "Unrecognized character: %c %s" c (sprint_location b))
   with
     | Eof -> EOF
 
@@ -128,10 +138,10 @@ and read_eq b p =
                       | '=' -> EQ  (* == *)
                       | '!' -> NEQ (* != *)
                       (* Échec sinon *)
-                      | c   -> failwith (Printf.sprintf "Unrecognized character: %c" c)
+                      | c   -> failwith (Printf.sprintf "Unrecognized character: %c expected one of : = ! at %s" c (sprint_location b))
                       )
     (* Échec sinon *)
-    | c   -> failwith (Printf.sprintf "Unrecognized character: %c" c)
+    | c   -> failwith (Printf.sprintf "Unrecognized character: %c expected = at %s" c (sprint_location b))
 
 (* Reconnaissance d'un entier *)
 and read_int b =
@@ -256,9 +266,12 @@ let rec parse_program b =
 
 (* Vérification de l'identité du prochain terminal. *)
 and expect_token t b =
-  if t = next_token b
+  let actual = next_token b in
+  if t = actual
   then shift b
-  else failwith (sprintf "Syntax error : %s expected" (token_to_string t))
+  else failwith (sprintf "Syntax error : expected %s but got %s %s" (token_to_string t)
+                                                                    (token_to_string actual)
+                                                                    (sprint_location b.input))
       
 (* [parse_block: token_buffer -> instruction] *)
 (* [block] <-  BEGIN [instr] END *)
@@ -296,8 +309,8 @@ and parse_atom_instr ?(if_c=false) b =
                                         | _ -> If(e, i)
                                         )
     | ELSE -> shift b; if if_c then Else(parse_block b)
-                        else failwith "Else block without previous If block"
-    | t -> failwith (sprintf "Bad instruction : %s not allowed" (token_to_string t))
+                        else failwith (sprintf "Else block without previous If block %s" (sprint_location b.input))
+    | t -> failwith (sprintf "Bad instruction : %s not allowed %s" (token_to_string t) (sprint_location b.input))
 			  
 (* [expect_ident: token_buffer -> string] *)
 and expect_ident b =
@@ -332,7 +345,7 @@ and parse_atom_expr b =
     | LP -> shift b; let e = parse_expr b in
                      let _ = expect_token RP b in
                      e
-    | t -> failwith (sprintf "Bad expression : %s not allowed" (token_to_string t))
+    | t -> failwith (sprintf "Bad expression : %s not allowed %s" (token_to_string t) (sprint_location b.input))
 
 (* Point débogage : un afficheur pour la syntaxe abstraite. *)
 let print_literal i = sprintf "%d" i
@@ -385,20 +398,20 @@ and eval_instruction env = function
   | Print (e) ->
     let i = match eval_expression env e with
       | Int i -> i
-      | _ -> failwith "Expected integer value"
+      | _ -> failwith (sprintf "Expected integer value in print(%s)" (print_expr e))
     in
     Printf.printf "%c" (char_of_int i); env
   | Printi (e) ->
     let i = match eval_expression env e with
       | Int i -> i
-      | _ -> failwith "Expected integer value"
+      | _ -> failwith (sprintf "Expected integer value in printi(%s)" (print_expr e))
     in
-    Printf.printf "%d" i; env
+    Printf.printf "%d\n" i; env
   | Set (id, e) -> State.add id (eval_expression env e) env
   | While (c, i) as iw ->
     let b = match eval_expression env c with
       | Bool b -> b
-      | _ -> failwith "Expected boolean value"
+      | _ -> failwith (sprintf "Expected boolean value in condition while(%s)" (print_expr c))
     in
     if b
     then let env = eval_instruction env i in
@@ -406,14 +419,14 @@ and eval_instruction env = function
     else env
   | If(e, i) -> let b = match eval_expression env e with
                 | Bool b -> b
-                | _ -> failwith "Expected boolean value"
+                | _ -> failwith (sprintf "Expected boolean value in condition if(%s)" (print_expr e))
                 in
                 if b then eval_instruction env i
                 else env
   | Else(i) -> env (*ignore solo else block*)
   | If_Else(e, i1, i2) -> let b = match eval_expression env e with
                           | Bool b -> b
-                          | _ -> failwith "Expected boolean value"
+                          | _ -> failwith (sprintf "Expected boolean value in condition if(%s)" (print_expr e))
                           in
                           if b then eval_instruction env i1
                           else eval_instruction env i2
@@ -424,14 +437,15 @@ and eval_instruction env = function
 (* [eval_expression: state -> expression -> int] *)
 and eval_expression env = function
   | Literal i -> Int i
-  | Literal_bool b -> Bool b
+  | Literal_bool b -> Int (int_of_bool  b)
   | Location id -> State.find id env
   | Binop(op, e1, e2) -> let v1 = eval_expression env e1 in
 			 let v2 = eval_expression env e2 in
                          let i1, i2 = match v1, v2 with
                            | Int i1, Int i2 -> i1, i2
-                           | Bool i1, Bool i2 -> (int_of_bool i1), (int_of_bool i2)
-                           | _ -> failwith "Expected integer values"
+                           | _ , Int i2  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e1))
+                           | Int i1 , _  -> failwith (sprintf "Expected integer values in expr %s" (print_expr e2))
+                           | _ -> failwith (sprintf "Expected integer values in %s" (print_expr (Binop(op, e1, e2))))
                          in
 			 let v = match op with
 			   | Add  -> Int (i1 + i2)
@@ -455,12 +469,16 @@ let main s x =
 
 let prog =
 "main {
-    continue := false;
-    if(continue) {
-      printi(1)
+    continue := true;
+    a := true;
+    if(1 == ) {
+      printi(1);
+      printi(2 + 3 * 5);
+      printi( (2+3) * 5 );
+      printi( 2 + 3 * (5 - 1) )
     }
     else {
-      printi(0)
+      printi(a)
     }
 }
 "
