@@ -14,6 +14,8 @@
         "false",    BOOL false;
         "var",      VAR;
         "main",     MAIN;
+        "break",    BREAK;
+        "continue", CONTINUE;
       ] ;
     fun s ->
       try  Hashtbl.find h s

@@ -16,6 +16,7 @@ type instruction =
   | Set     of string * expression
   | If      of expression * sequence * sequence
   | While   of expression * sequence
+  | Break | Continue
 and sequence = instruction list
 
 type program = {

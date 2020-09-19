@@ -16,7 +16,7 @@
 %token VAR
 %token MAIN
 %token LPAR RPAR BEGIN END SEMI
-%token PUTCHAR SET IF ELSE WHILE
+%token PUTCHAR SET IF ELSE WHILE BREAK CONTINUE
 %token EOF
 
 
@@ -60,6 +60,8 @@ instruction:
     ELSE BEGIN s2=list(instruction) END { If(c, s1, s2) }
 | WHILE LPAR c=expression RPAR
     BEGIN s=list(instruction) END { While(c, s) }
+| BREAK SEMI  { Break }
+| CONTINUE SEMI { Continue }
 ;
 
 expression:
