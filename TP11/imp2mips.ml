@@ -19,6 +19,14 @@ let rec tr_binop op =
     | Mul ->    mul t0 t0 t1
     | Div ->    div t0 t0 t1
     | Rem ->    rem t0 t0 t1
+    | Eq  ->    seq t0 t0 t1
+    | Neq ->    sne t0 t0 t1
+    | Lt  ->    slt t0 t0 t1
+    | Le  ->    sle t0 t0 t1
+    | Gt  ->    sgt t0 t0 t1
+    | Ge  ->    sge t0 t0 t1
+    | And ->   and_ t0 t0 t1
+    | Or  ->    or_ t0 t0 t1
     | _ -> failwith("Not implemented")
     in
   let asm_end = push t0
