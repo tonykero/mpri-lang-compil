@@ -5,10 +5,27 @@ let push reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 sp  @@ subi sp
 let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0 sp
 *)
 
+let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
+
 let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
 
-let comment_address () = comment (Printf.sprintf "OFFSET: %d" !addr)
+let save reg addr =
+    let idx = addr/4 in
+    if idx+2 <= 9 then
+          comment (Printf.sprintf "STORE %s in $t%d" reg (idx+2))
+      @@  move regs.(idx) reg
+    else  comment (Printf.sprintf "STORE %s at %d" reg (addr-7*4))
+      @@  sw reg (addr-7*4) sp
+
+let load reg addr = 
+    let idx = addr/4 in
+    if idx+2 <= 9 then
+          comment (Printf.sprintf "LOAD %s from $t%d" reg (idx+2))
+      @@  move reg regs.(idx)
+    else  comment (Printf.sprintf "LOAD %s at %d" reg (addr-7*4))
+      @@  lw reg (addr-7*4) sp
+
 
 let new_label =
   let cpt = ref (-1) in
@@ -18,7 +35,7 @@ let int_of_bool b = if b then 1 else 0
 
 let rec tr_binop op e1 e2=
   let offset = incr_offset () in
-  let asm_pre =  comment_address () @@ sw t1 offset sp
+  let asm_pre =     save t1 offset
                 @@  tr_expr e2
                 @@  move t1 t0
                 @@  tr_expr e1
@@ -39,7 +56,7 @@ let rec tr_binop op e1 e2=
     | Or  ->    or_ t0 t0 t1
     | _ -> failwith("Not implemented")
     in
-  let asm_end = lw t1 offset sp
+  let asm_end = load t1 offset
   in    asm_pre @@ asm_op @@ asm_end
 and tr_binop_ri op e1 i =
     let asm_pre =   tr_expr e1
@@ -54,12 +71,12 @@ and tr_binop_ri op e1 i =
               asm_pre @@ asm_op @@ asm_end
 and tr_binop_li op i e1 = let r = match op with
               | Sub -> let offset = incr_offset () in
-                          comment_address () @@ sw t1 offset sp
+                          save t1 offset
                       @@  tr_expr e1
                       @@  move t1 t0
                       @@  li t0 i
                       @@  sub t0 t0 t1
-                      @@  lw t1 offset sp
+                      @@  load t1 offset
               | _ -> tr_binop_ri op e1 i
             in r
 and tr_expr e =
@@ -89,11 +106,11 @@ let rec tr_instr i =
                     @@  li v0 11
                     @@  syscall
     | Set(str, e)->     let offset = incr_offset () in
-                        comment_address () @@ sw t1 offset sp
+                        save t1 offset
                     @@  tr_expr e
                     @@  la t1 str
                     @@  sw t0 0 t1
-                    @@  lw t1 offset sp
+                    @@  load t1 offset
     | If(cond, se1, se2) ->   let else_label = new_label () in
                               let end_label  = new_label () in
                               tr_expr cond
