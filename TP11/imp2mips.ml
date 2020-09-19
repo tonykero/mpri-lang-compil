@@ -10,9 +10,12 @@ let new_label =
 
 let int_of_bool b = if b then 1 else 0
 
-let rec tr_binop op = 
-  let asm_pre =     pop t1
-                @@  pop t0 in
+let rec tr_binop op e1 e2= 
+  let asm_pre =     tr_expr e1
+                @@  tr_expr e2
+                @@  pop t1
+                @@  pop t0
+              in
   let asm_op = match op with
     | Add ->    add t0 t0 t1
     | Sub ->    sub t0 t0 t1
@@ -30,11 +33,28 @@ let rec tr_binop op =
     | _ -> failwith("Not implemented")
     in
   let asm_end = push t0
-  in    asm_pre
-    @@  asm_op
-    @@  asm_end
-
-let rec tr_expr e =
+  in    asm_pre @@ asm_op @@ asm_end
+and tr_binop_ri op e1 i =
+    let asm_pre =   tr_expr e1
+                @@  pop t0
+              in
+    let asm_op = match op with
+      | Add -> addi t0 t0 i
+      | Sub -> subi t0 t0 i
+      | _   -> failwith "Unexpected operator with imm value"
+              in
+    let asm_end = push t0
+              in
+              asm_pre @@ asm_op @@ asm_end
+and tr_binop_li op i e1 = let r = match op with
+              | Sub ->    li t0 i
+                      @@  tr_expr e1
+                      @@  pop t1
+                      @@  sub t0 t0 t1
+                      @@  push t0
+              | _ -> tr_binop_ri op e1 i
+            in r
+and tr_expr e =
   match e with
     | Cst i   ->      li t0 i
                   @@  push t0
@@ -42,10 +62,23 @@ let rec tr_expr e =
     | Var str ->      la t1 str
                   @@  lw t0 0 t1
                   @@  push t0
-    | Binop(op, e1, e2) ->    tr_expr e1
-                          @@  tr_expr e2
-                          @@  tr_binop op
-    | _ -> failwith "not implemented"
+    | Binop(op, e1, e2) -> let r = match op with (* check for immediate op*)
+                            | Add | Sub as op -> let r = match e1, e2 with
+                                                  | _, Cst i -> tr_binop_ri op e1 i
+                                                  | Cst i, _ -> tr_binop_li op i e2
+                                                  | _ -> tr_binop op e1 e2
+                                                in r
+                            | _ ->  tr_binop op e1 e2 in r
+    | Unop(op, e) -> let r = match op with
+                    | Minus ->    tr_expr e
+                              @@  pop t0
+                              @@  sub t0 zero t0
+                              @@  push t0
+                    | Not ->      tr_expr e
+                              @@  pop t0
+                              @@  not_ t0 t0
+                              @@  push t0 in r
+    (*| _ -> failwith "expr not implemented"*)
       
 let rec tr_instr i =
   match i with
@@ -79,7 +112,7 @@ let rec tr_instr i =
                           @@  tr_expr cond
                           @@  pop t0
                           @@  bnez t0 start_label
-    | _ -> failwith "not implemented"
+    (*| _ -> failwith "instr not implemented"*)
       
 and tr_seq = function
   | []   -> nop

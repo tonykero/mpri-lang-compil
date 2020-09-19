@@ -19,6 +19,7 @@
 %token PUTCHAR SET IF ELSE WHILE
 %token EOF
 
+
 %left AND OR
 %left LT LE GT GE EQ NEQ
 %left PLUS MINUS
@@ -63,12 +64,33 @@ instruction:
 
 expression:
 | n=CST { Cst(n) }
+
 | b=BOOL { Bool(b) }
 | id=IDENT { Var(id) }
 | LPAR e=expression RPAR { e }
 | op=unop e=expression { Unop(op, e) }
-| e1=expression op=binop e2=expression { Binop(op, e1, e2) }
-;
+| e1=expression op=binop e2=expression { 
+  match e1, e2 with
+    | Cst i1, Cst i2 -> let r = match op with
+                        | Add -> Cst(i1 + i2)
+                        | Sub -> Cst(i1 - i2)
+                        | Mul -> Cst(i1 * i2)
+                        | Div -> Cst(i1 / i2)
+                        | Rem -> Cst(i1 mod i2)
+                        | Eq  -> Bool(i1 == i2)
+                        | Neq -> Bool(i1 != i2)
+                        | Lt  -> Bool(i1 < i2)
+                        | Le  -> Bool(i1 <= i2)
+                        | Gt  -> Bool(i1 > i2)
+                        | Ge  -> Bool(i1 >= i2)
+                        | _ -> failwith("cst arithmetic/relational op not implemented")
+                        in r
+    | Bool b1, Bool b2 -> let r = match op with
+                        | And -> Bool(b1 && b2)
+                        | Or -> Bool(b1 || b2)
+                        | _ -> failwith("cst logical op not implemented") in r
+    | _ -> Binop(op, e1, e2)
+    }
 
 %inline unop:
 | MINUS { Minus }
