@@ -1,8 +1,14 @@
 open Imp
 open Mips
+(* abandon push & pop for absolute adressing
+let push reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 sp  @@ subi sp sp 4
+let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0 sp
+*)
 
-let push reg = sw reg 0 sp  @@ subi sp sp 4
-let pop  reg = addi sp sp 4 @@ lw reg 0 sp
+let addr = ref (-4)
+let incr_offset () = addr := !addr + 4;!addr
+
+let comment_address () = comment (Printf.sprintf "OFFSET: %d" !addr)
 
 let new_label =
   let cpt = ref (-1) in
@@ -10,8 +16,10 @@ let new_label =
 
 let int_of_bool b = if b then 1 else 0
 
-let rec tr_binop op e1 e2= 
-  let asm_pre =     push t1 @@ tr_expr e2
+let rec tr_binop op e1 e2=
+  let offset = incr_offset () in
+  let asm_pre =  comment_address () @@ sw t1 offset sp
+                @@  tr_expr e2
                 @@  move t1 t0
                 @@  tr_expr e1
               in
@@ -31,7 +39,7 @@ let rec tr_binop op e1 e2=
     | Or  ->    or_ t0 t0 t1
     | _ -> failwith("Not implemented")
     in
-  let asm_end = pop t1
+  let asm_end = lw t1 offset sp
   in    asm_pre @@ asm_op @@ asm_end
 and tr_binop_ri op e1 i =
     let asm_pre =   tr_expr e1
@@ -45,11 +53,13 @@ and tr_binop_ri op e1 i =
               in
               asm_pre @@ asm_op @@ asm_end
 and tr_binop_li op i e1 = let r = match op with
-              | Sub ->    push t1 @@ tr_expr e1
+              | Sub -> let offset = incr_offset () in
+                          comment_address () @@ sw t1 offset sp
+                      @@  tr_expr e1
                       @@  move t1 t0
                       @@  li t0 i
                       @@  sub t0 t0 t1
-                      @@  pop t1
+                      @@  lw t1 offset sp
               | _ -> tr_binop_ri op e1 i
             in r
 and tr_expr e =
@@ -78,9 +88,12 @@ let rec tr_instr i =
                     @@  move a0 t0
                     @@  li v0 11
                     @@  syscall
-    | Set(str, e)->     push t1 @@ tr_expr e
+    | Set(str, e)->     let offset = incr_offset () in
+                        comment_address () @@ sw t1 offset sp
+                    @@  tr_expr e
                     @@  la t1 str
-                    @@  sw t0 0 t1 @@ pop t1
+                    @@  sw t0 0 t1
+                    @@  lw t1 offset sp
     | If(cond, se1, se2) ->   let else_label = new_label () in
                               let end_label  = new_label () in
                               tr_expr cond
