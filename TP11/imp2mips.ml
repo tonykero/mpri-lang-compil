@@ -70,6 +70,15 @@ let rec tr_instr i =
                           @@  label else_label
                           @@  tr_seq se2
                           @@  label end_label
+    | While(cond, se) ->  let test_label  = new_label () in
+                          let start_label   = new_label () in
+                              b test_label
+                          @@  label start_label
+                          @@  tr_seq se
+                          @@  label test_label
+                          @@  tr_expr cond
+                          @@  pop t0
+                          @@  bnez t0 start_label
     | _ -> failwith "not implemented"
       
 and tr_seq = function
