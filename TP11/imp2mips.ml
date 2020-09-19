@@ -9,11 +9,14 @@ let new_label =
   fun () -> incr cpt; Printf.sprintf "__label_%i" !cpt
 
 let rec tr_binop op = 
-  let asm_pre =     pop t0
-                @@  pop t1 in
+  let asm_pre =     pop t1
+                @@  pop t0 in
   let asm_op = match op with
     | Add ->    add t0 t0 t1
+    | Sub ->    sub t0 t0 t1
     | Mul ->    mul t0 t0 t1
+    | Div ->    div t0 t0 t1
+    | Rem ->    rem t0 t0 t1
     | _ -> failwith("Not implemented")
     in
   let asm_end = push t0
