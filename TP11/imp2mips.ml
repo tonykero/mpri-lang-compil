@@ -10,8 +10,11 @@ let new_label =
         
 let rec tr_expr e =
   match e with
-    | Cst i ->    li t0 i
-              @@  push t0
+    | Cst i   ->      li t0 i
+                  @@  push t0
+    | Var str ->      la t1 str
+                  @@  lw t0 0 t1
+                  @@  push t0
     | _ -> failwith "not implemented"
       
 let rec tr_instr i =
