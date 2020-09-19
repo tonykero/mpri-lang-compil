@@ -1,0 +1,5 @@
+// Affiche 'a' si l'on donne le paramètre 97
+main {
+  putchar(arg);
+  putchar(10);
+}

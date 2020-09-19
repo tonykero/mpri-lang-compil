@@ -1,0 +1,5 @@
+// Affiche 'a'
+main {
+  putchar((200-2-(21-18))/2);
+  putchar(10);
+}

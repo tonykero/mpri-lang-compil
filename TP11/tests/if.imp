@@ -1,0 +1,22 @@
+// Affiche 'Ok'
+main {
+  if (true) {
+    if (false) {
+      putchar(75);
+    } else {
+      putchar(79);
+    }
+  } else {
+    putchar(75);
+  }
+  if (false) {
+    putchar(111);
+  } else {
+    if (true) {
+      putchar(107);
+    } else {
+      putchar(111);
+    }
+  }
+  putchar(10);
+}

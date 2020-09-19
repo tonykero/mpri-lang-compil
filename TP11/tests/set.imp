@@ -1,0 +1,12 @@
+// Affiche 'Ok'
+var x;
+var y;
+
+main {
+  x = 79;
+  putchar(x);
+  x = 107;
+  putchar(x);
+  y = 10;
+  putchar(y);
+}

@@ -1,0 +1,14 @@
+// Affiche 'Ok'
+main {
+  if (1 <= 2 && 3 == 3) {
+    putchar(79);
+  } else {
+    putchar(75);
+  }
+  if (3 > 2 && 4 != 4) {
+    putchar(111);
+  } else {
+    putchar(107);
+  }
+  putchar(10);
+}

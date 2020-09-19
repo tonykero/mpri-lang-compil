@@ -1,2 +1,5 @@
-.vscode
+.vscode/
+_build/
 
+*.asm
+*.jar

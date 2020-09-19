@@ -1,0 +1,6 @@
+// Affiche 'Ok'
+main {
+  putchar(79);
+  putchar(107);
+  putchar(10);
+}

@@ -1,0 +1,5 @@
+// Affiche '*'
+main {
+  putchar(3+4*5+19);
+  putchar(10);
+}

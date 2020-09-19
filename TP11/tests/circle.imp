@@ -1,0 +1,25 @@
+var i;
+var j;
+var continue;
+
+main {
+  continue = true;
+  i = 0;
+
+  while (continue) {
+    continue = false;
+    j = 0;
+    while (j < arg+1) {
+      if (i*i + j*j < arg*arg) {
+        putchar(46);
+        continue = true;
+      } else {
+        putchar(35);
+      }
+      putchar(32);
+      j = j+1;
+    }
+    putchar(10);
+    i = i+1;
+  }
+}
