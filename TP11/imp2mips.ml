@@ -8,6 +8,8 @@ let new_label =
   let cpt = ref (-1) in
   fun () -> incr cpt; Printf.sprintf "__label_%i" !cpt
 
+let int_of_bool b = if b then 1 else 0
+
 let rec tr_binop op = 
   let asm_pre =     pop t1
                 @@  pop t0 in
@@ -28,6 +30,7 @@ let rec tr_expr e =
   match e with
     | Cst i   ->      li t0 i
                   @@  push t0
+    | Bool b  ->      (tr_expr (Cst (int_of_bool b)))
     | Var str ->      la t1 str
                   @@  lw t0 0 t1
                   @@  push t0
@@ -46,6 +49,19 @@ let rec tr_instr i =
                     @@  pop t0
                     @@  la t1 str
                     @@  sw t0 0 t1
+    | If(cond, se1, se2) ->   let else_label = new_label () in
+                              let end_label  = new_label () in
+                              tr_expr cond
+                          @@  pop t0
+                          (*if false -> else*)
+                          @@  beqz t0 else_label
+                          (*if true*)
+                          @@  tr_seq se1
+                          @@  b end_label
+                          (*if false*)
+                          @@  label else_label
+                          @@  tr_seq se2
+                          @@  label end_label
     | _ -> failwith "not implemented"
       
 and tr_seq = function
