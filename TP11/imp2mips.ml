@@ -11,10 +11,9 @@ let new_label =
 let int_of_bool b = if b then 1 else 0
 
 let rec tr_binop op e1 e2= 
-  let asm_pre =     tr_expr e1
-                @@  tr_expr e2
-                @@  pop t1
-                @@  pop t0
+  let asm_pre =     push t1 @@ tr_expr e2
+                @@  move t1 t0
+                @@  tr_expr e1
               in
   let asm_op = match op with
     | Add ->    add t0 t0 t1
@@ -32,36 +31,33 @@ let rec tr_binop op e1 e2=
     | Or  ->    or_ t0 t0 t1
     | _ -> failwith("Not implemented")
     in
-  let asm_end = push t0
+  let asm_end = pop t1
   in    asm_pre @@ asm_op @@ asm_end
 and tr_binop_ri op e1 i =
     let asm_pre =   tr_expr e1
-                @@  pop t0
               in
     let asm_op = match op with
       | Add -> addi t0 t0 i
       | Sub -> subi t0 t0 i
       | _   -> failwith "Unexpected operator with imm value"
               in
-    let asm_end = push t0
+    let asm_end = nop
               in
               asm_pre @@ asm_op @@ asm_end
 and tr_binop_li op i e1 = let r = match op with
-              | Sub ->    li t0 i
-                      @@  tr_expr e1
-                      @@  pop t1
+              | Sub ->    push t1 @@ tr_expr e1
+                      @@  move t1 t0
+                      @@  li t0 i
                       @@  sub t0 t0 t1
-                      @@  push t0
+                      @@  pop t1
               | _ -> tr_binop_ri op e1 i
             in r
 and tr_expr e =
   match e with
     | Cst i   ->      li t0 i
-                  @@  push t0
     | Bool b  ->      (tr_expr (Cst (int_of_bool b)))
-    | Var str ->      la t1 str
-                  @@  lw t0 0 t1
-                  @@  push t0
+    | Var str ->      la t0 str
+                  @@  lw t0 0 t0
     | Binop(op, e1, e2) -> let r = match op with (* check for immediate op*)
                             | Add | Sub as op -> let r = match e1, e2 with
                                                   | _, Cst i -> tr_binop_ri op e1 i
@@ -71,29 +67,23 @@ and tr_expr e =
                             | _ ->  tr_binop op e1 e2 in r
     | Unop(op, e) -> let r = match op with
                     | Minus ->    tr_expr e
-                              @@  pop t0
                               @@  sub t0 zero t0
-                              @@  push t0
                     | Not ->      tr_expr e
-                              @@  pop t0
-                              @@  not_ t0 t0
-                              @@  push t0 in r
+                              @@  not_ t0 t0 in r
     (*| _ -> failwith "expr not implemented"*)
       
 let rec tr_instr i =
   match i with
     | Putchar(e) ->     tr_expr e
-                    @@  pop a0
+                    @@  move a0 t0
                     @@  li v0 11
                     @@  syscall
-    | Set(str, e)->     tr_expr e
-                    @@  pop t0
+    | Set(str, e)->     push t1 @@ tr_expr e
                     @@  la t1 str
-                    @@  sw t0 0 t1
+                    @@  sw t0 0 t1 @@ pop t1
     | If(cond, se1, se2) ->   let else_label = new_label () in
                               let end_label  = new_label () in
                               tr_expr cond
-                          @@  pop t0
                           (*if false -> else*)
                           @@  beqz t0 else_label
                           (*if true*)
@@ -110,7 +100,6 @@ let rec tr_instr i =
                           @@  tr_seq se
                           @@  label test_label
                           @@  tr_expr cond
-                          @@  pop t0
                           @@  bnez t0 start_label
     (*| _ -> failwith "instr not implemented"*)
       
