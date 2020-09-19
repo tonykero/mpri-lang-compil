@@ -7,7 +7,20 @@ let pop  reg = addi sp sp 4 @@ lw reg 0 sp
 let new_label =
   let cpt = ref (-1) in
   fun () -> incr cpt; Printf.sprintf "__label_%i" !cpt
-        
+
+let rec tr_binop op = 
+  let asm_pre =     pop t0
+                @@  pop t1 in
+  let asm_op = match op with
+    | Add ->    add t0 t0 t1
+    | Mul ->    mul t0 t0 t1
+    | _ -> failwith("Not implemented")
+    in
+  let asm_end = push t0
+  in    asm_pre
+    @@  asm_op
+    @@  asm_end
+
 let rec tr_expr e =
   match e with
     | Cst i   ->      li t0 i
@@ -15,6 +28,9 @@ let rec tr_expr e =
     | Var str ->      la t1 str
                   @@  lw t0 0 t1
                   @@  push t0
+    | Binop(op, e1, e2) ->    tr_expr e1
+                          @@  tr_expr e2
+                          @@  tr_binop op
     | _ -> failwith "not implemented"
       
 let rec tr_instr i =
