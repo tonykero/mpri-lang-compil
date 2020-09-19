@@ -9,10 +9,18 @@ let new_label =
   fun () -> incr cpt; Printf.sprintf "__label_%i" !cpt
         
 let rec tr_expr e =
-  failwith "not implemented"
+  match e with
+    | Cst i ->    li t0 i
+              @@  push t0
+    | _ -> failwith "not implemented"
       
 let rec tr_instr i =
-  failwith "not implemented"
+  match i with
+    | Putchar(e) ->     tr_expr e
+                    @@  pop a0
+                    @@  li v0 11
+                    @@  syscall
+    | _ -> failwith "not implemented"
       
 and tr_seq = function
   | []   -> nop
