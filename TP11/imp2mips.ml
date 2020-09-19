@@ -23,6 +23,10 @@ let rec tr_instr i =
                     @@  pop a0
                     @@  li v0 11
                     @@  syscall
+    | Set(str, e)->     tr_expr e
+                    @@  pop t0
+                    @@  la t1 str
+                    @@  sw t0 0 t1
     | _ -> failwith "not implemented"
       
 and tr_seq = function
