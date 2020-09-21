@@ -10,6 +10,7 @@
         "if",       IF;
         "else",     ELSE;
         "while",    WHILE;
+        "for",      FOR;
         "true",     BOOL true;
         "false",    BOOL false;
         "var",      VAR;
@@ -43,6 +44,8 @@ rule token = parse
       { keyword_or_ident id }
   | ";"
       { SEMI }
+  | ","
+      { COMMA }
   | "="
       { SET }
   | "+"

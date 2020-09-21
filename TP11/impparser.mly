@@ -15,8 +15,8 @@
 %token <string> IDENT
 %token VAR
 %token MAIN
-%token LPAR RPAR BEGIN END SEMI
-%token PUTCHAR SET IF ELSE WHILE BREAK CONTINUE
+%token LPAR RPAR BEGIN END SEMI COMMA
+%token PUTCHAR SET IF ELSE WHILE FOR BREAK CONTINUE
 %token EOF
 
 
@@ -52,21 +52,26 @@ main:
 | MAIN BEGIN s=list(instruction) END { s }
 ;
 
+set_expr:
+| id=IDENT SET e=expression { Set(id, e) }
+
 instruction:
 | PUTCHAR LPAR e=expression RPAR SEMI { Putchar(e) }
-| id=IDENT SET e=expression SEMI { Set(id, e) }
+| s=set_expr SEMI { s }
 | IF LPAR c=expression RPAR
     BEGIN s1=list(instruction) END
     ELSE BEGIN s2=list(instruction) END { If(c, s1, s2) }
 | WHILE LPAR c=expression RPAR
     BEGIN s=list(instruction) END { While(c, s) }
+| FOR LPAR init=set_expr COMMA cond=expression COMMA iter_set=set_expr RPAR
+    BEGIN s=list(instruction) END { For(init, cond, iter_set, s) }
 | BREAK SEMI  { Break }
 | CONTINUE SEMI { Continue }
 ;
 
+
 expression:
 | n=CST { Cst(n) }
-
 | b=BOOL { Bool(b) }
 | id=IDENT { Var(id) }
 | LPAR e=expression RPAR { e }

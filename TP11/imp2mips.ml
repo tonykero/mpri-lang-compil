@@ -139,6 +139,8 @@ let rec tr_instr i =
                           @@  tr_expr cond
                           @@  bnez t0 start_label
                           @@  label end_label
+    (*for is just syntaxic sugar*)
+    | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
     | Continue -> b !cur_loop_test
     (*| _ -> failwith "instr not implemented"*)
