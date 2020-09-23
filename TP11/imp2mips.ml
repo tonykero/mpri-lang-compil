@@ -1,14 +1,18 @@
 open Imp
 open Mips
 (* abandon push & pop for absolute adressing
+ * but use it for function arguments
+*)
 let push reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 sp  @@ subi sp sp 4
 let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0 sp
-*)
+
 
 let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
 
 let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
+
+
 
 let save reg addr =
     let idx = addr/4 in
@@ -104,26 +108,28 @@ and tr_expr e =
     | Call(id, se) -> let r = match id with 
                         | "print_int" -> if (List.length se) = 1 then
                                             let e = List.nth se 0 in
-                                                tr_expr e
-                                            @@  move a0 t0
-                                            @@  li v0 1
-                                            @@  syscall
+                                            let offset = !addr in
+                                                  tr_expr e
+                                              @@  addi sp sp offset
+                                              @@  push t0
+                                              @@  jal "print_int"
+                                              @@  pop t0
+                                              @@  subi sp sp (offset)
                                           else failwith "print_int takes only one argument"
                         | "power" ->      if List.length se = 2 then
                                           let xe = List.nth se 0 in (*t0*)
                                           let ne = List.nth se 1 in (*t1*)
-                                          let loop_label = new_label () in
                                           let offset = incr_offset () in
                                                 save t1 offset
                                             @@  tr_expr ne
                                             @@  move t1 t0
                                             @@  tr_expr xe
-                                            @@  li a0 1
-                                            @@  label loop_label
-                                            @@  mul a0 a0 t0
-                                            @@  subi t1 t1 1
-                                            @@  bgtz t1 loop_label
-                                            @@  move t0 a0
+                                            @@  addi sp sp offset
+                                            @@  push t1
+                                            @@  push t0
+                                            @@  jal "power"
+                                            @@  pop t0
+                                            @@  subi sp sp offset
                                             @@  load t1 offset
 
                                           else failwith "power takes two argument"
@@ -218,6 +224,29 @@ let translate_program prog =
     @@ label "atoi_end"
     @@ move v0 t1
     @@ jr   ra
+    @@ comment "print_int"
+    @@ label "print_int"
+    @@ lw a0 4 sp
+    @@ li v0 1
+    @@ syscall
+    @@ sw a0 0 sp
+    @@ subi sp sp 4
+    @@ jr ra
+    
+    @@ comment "power"
+    @@ label "power"
+    @@ lw s0 8 sp
+    @@ lw s1 4 sp
+    @@ li t0 1
+    @@ b "power_loop_guard"
+    @@ label "power_loop_code"
+    @@ mul t0 t0 s1
+    @@ subi s0 s0 1
+    @@ label "power_loop_guard"
+    @@ bgtz s0 "power_loop_code"
+    @@ sw t0 0 sp
+    @@ subi sp sp 4
+    @@ jr ra
   in
 
   let main_code = tr_seq prog.main in
