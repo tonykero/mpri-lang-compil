@@ -1,18 +1,18 @@
 var i;
 var j;
-var continue;
+var c;
 
 main {
-  continue = true;
+  c = true;
   i = 0;
 
-  while (continue) {
-    continue = false;
+  while (c) {
+    c = false;
     j = 0;
     while (j < arg+1) {
       if (i*i + j*j < arg*arg) {
         putchar(46);
-        continue = true;
+        c = true;
       } else {
         putchar(35);
       }
