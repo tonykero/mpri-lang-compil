@@ -1,0 +1,30 @@
+var i;
+var j;
+var k;
+var c;
+
+main {
+  c = true;
+  i = 0;
+  j  = 0;
+  k = 0;
+  while(c)
+  {
+    if(k > 98) {
+      break;
+    } else {k = k+1;}
+    while (c) {
+      if(j > 97) {
+        break;
+      } else { j = j+1;}
+      while(c) {
+        if(i > 96) {
+          break;
+        } else { i = i+1;}
+      }
+    }
+  }
+  putchar(i);
+  putchar(j);
+  putchar(k);
+}
