@@ -17,6 +17,8 @@
         "main",     MAIN;
         "break",    BREAK;
         "continue", CONTINUE;
+        "function", FUNCTION;
+        "return",   RETURN;
       ] ;
     fun s ->
       try  Hashtbl.find h s

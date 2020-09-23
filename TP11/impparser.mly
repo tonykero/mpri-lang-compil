@@ -13,10 +13,10 @@
 %token <int> CST
 %token <bool> BOOL
 %token <string> IDENT
-%token VAR
+%token VAR FUNCTION COMMA
 %token MAIN
-%token LPAR RPAR BEGIN END SEMI COMMA
-%token PUTCHAR SET IF ELSE WHILE FOR BREAK CONTINUE
+%token LPAR RPAR BEGIN END SEMI
+%token PUTCHAR SET IF ELSE WHILE FOR BREAK CONTINUE RETURN
 %token EOF
 
 
@@ -33,8 +33,10 @@
 %%
 
 program:
-| globals=list(variable_decl) main=main EOF
-    { {main; globals} }
+| globals=list(variable_decl)
+    functions=list(function_def)
+    main=main EOF
+    { {main; functions; globals} }
 | error { let pos = $startpos in
           let message =
             Printf.sprintf
@@ -52,8 +54,16 @@ main:
 | MAIN BEGIN s=list(instruction) END { s }
 ;
 
+
+function_def:
+| FUNCTION name=IDENT LPAR params=separated_list(COMMA, IDENT) RPAR
+    BEGIN locals=list(variable_decl) code=list(instruction) END
+    { {name; code; params; locals} }
+;
+
 set_expr:
 | id=IDENT SET e=expression { Set(id, e) }
+;
 
 instruction:
 | PUTCHAR LPAR e=expression RPAR SEMI { Putchar(e) }
@@ -67,6 +77,7 @@ instruction:
     BEGIN s=list(instruction) END { For(init, cond, iter_set, s) }
 | BREAK SEMI  { Break }
 | CONTINUE SEMI { Continue }
+| RETURN e=expression SEMI { Return(e) }
 ;
 
 
@@ -98,6 +109,9 @@ expression:
                         | _ -> failwith("cst logical op not implemented") in r
     | _ -> Binop(op, e1, e2)
     }
+| f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { Call(f, params) }
+;
+
 
 %inline unop:
 | MINUS { Minus }

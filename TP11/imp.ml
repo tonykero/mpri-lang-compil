@@ -10,6 +10,7 @@ type expression =
   | Var   of string
   | Unop  of unop * expression
   | Binop of binop * expression * expression
+  | Call  of string * expression list
       
 type instruction =
   | Putchar of expression
@@ -18,9 +19,18 @@ type instruction =
   | While   of expression * sequence
   | For     of instruction * expression * instruction * sequence
   | Break | Continue
+  | Return  of expression
 and sequence = instruction list
+
+type function_def = {
+  name: string;
+  code: sequence;
+  params: string list;
+  locals: string list;
+}
 
 type program = {
   main: sequence;
+  functions: function_def list;
   globals: string list;
 }

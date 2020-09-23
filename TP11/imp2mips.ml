@@ -57,7 +57,7 @@ let rec tr_binop op e1 e2=
     | Ge  ->    sge t0 t0 t1
     | And ->   and_ t0 t0 t1
     | Or  ->    or_ t0 t0 t1
-    | _ -> failwith("Not implemented")
+    | _ -> failwith("Binary operator not implemented")
     in
   let asm_end = load t1 offset
   in    asm_pre @@ asm_op @@ asm_end
@@ -99,10 +99,37 @@ and tr_expr e =
                     | Minus ->    tr_expr e
                               @@  sub t0 zero t0
                     | Not ->      tr_expr e
-                              @@  not_ t0 t0 in r
-    (*| _ -> failwith "expr not implemented"*)
-      
-let rec tr_instr i =
+                              @@  not_ t0 t0
+                    in r
+    | Call(id, se) -> let r = match id with 
+                        | "print_int" -> if (List.length se) = 1 then
+                                            let e = List.nth se 0 in
+                                                tr_expr e
+                                            @@  move a0 t0
+                                            @@  li v0 1
+                                            @@  syscall
+                                          else failwith "print_int takes only one argument"
+                        | "power" ->      if List.length se = 2 then
+                                          let xe = List.nth se 0 in (*t0*)
+                                          let ne = List.nth se 1 in (*t1*)
+                                          let loop_label = new_label () in
+                                          let offset = incr_offset () in
+                                                save t1 offset
+                                            @@  tr_expr ne
+                                            @@  move t1 t0
+                                            @@  tr_expr xe
+                                            @@  li a0 1
+                                            @@  label loop_label
+                                            @@  mul a0 a0 t0
+                                            @@  subi t1 t1 1
+                                            @@  bgtz t1 loop_label
+                                            @@  move t0 a0
+                                            @@  load t1 offset
+
+                                          else failwith "power takes two argument"
+                        | _ -> failwith "function doesn't exist"
+                                        in r
+and tr_instr i =
   match i with
     | Putchar(e) ->     tr_expr e
                     @@  move a0 t0
@@ -149,7 +176,7 @@ let rec tr_instr i =
     | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
     | Continue -> b !cur_loop_test
-    (*| _ -> failwith "instr not implemented"*)
+    | _ -> failwith "instr not implemented"
       
 and tr_seq = function
   | []   -> nop

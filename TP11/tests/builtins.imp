@@ -1,0 +1,9 @@
+// Affiche '3481Q'
+var x;
+
+main {
+  x = print_int(3);
+  x = power(x, print_int(4));
+  putchar(print_int(x));
+  putchar(10);
+}
