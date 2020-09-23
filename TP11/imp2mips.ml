@@ -34,7 +34,6 @@ let new_label =
 let cur_loop_test = ref ("")
 let cur_loop_end = ref ("")
 
-
 let int_of_bool b = if b then 1 else 0
 
 let rec tr_binop op e1 e2=
@@ -130,8 +129,11 @@ let rec tr_instr i =
     | While(cond, se) ->  let test_label  = new_label () in
                           let start_label = new_label () in
                           let end_label   = new_label () in
+                          let old_loop_test = !cur_loop_test in
+                          let old_loop_end = !cur_loop_end in
                               cur_loop_test := test_label;
                               cur_loop_end := end_label;
+                          let ret = 
                               b test_label
                           @@  label start_label
                           @@  tr_seq se
@@ -139,6 +141,10 @@ let rec tr_instr i =
                           @@  tr_expr cond
                           @@  bnez t0 start_label
                           @@  label end_label
+                          in 
+                          cur_loop_test := old_loop_test;
+                          cur_loop_end  := old_loop_end; 
+                          ret
     (*for is just syntaxic sugar*)
     | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
