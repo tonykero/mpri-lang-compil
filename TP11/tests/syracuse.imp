@@ -1,0 +1,24 @@
+// Affiche la trajectoire de la suite de Syracuse pour le paramètre donné
+var acc;
+
+function odd(n) {
+  putchar(47);
+  return(3*n+1);
+}
+
+function even(n) {
+  putchar(92);
+  return(n/2);
+}
+
+main {
+  acc = 69;
+  while (acc != 1) {
+    if (acc%2 == 0) {
+      acc = even(acc);
+    } else {
+      acc = odd(acc);
+    }
+    acc = print_int(acc);
+  }
+}

@@ -1,44 +1,65 @@
 open Imp
 open Mips
+
+type sym_table_type = (string, string list) Hashtbl.t
+
+let (sym_table: sym_table_type) = Hashtbl.create 64
+let current_function = ref("")
+
 (* abandon push & pop for absolute adressing
- * but use it for function arguments
+ * but use it for function arguments/result
 *)
 let push reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 sp  @@ subi sp sp 4
 let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0 sp
 
+let push_fp reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 fp  @@ subi fp fp 4
+let pop_fp  reg = comment (Printf.sprintf "POP %s" reg) @@ addi fp fp 4 @@ lw reg 0 fp
 
-let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
-
+(* replaces push & pop with absolute addressing *)
 let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
-
-
+let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
 
 let save reg addr =
-    let idx = addr/4 in
-    if idx+2 <= 9 then
-          comment (Printf.sprintf "STORE %s in $t%d" reg (idx+2))
-      @@  move regs.(idx) reg
-    else  comment (Printf.sprintf "STORE %s at %d" reg (addr-7*4))
-      @@  sw reg (addr-7*4) sp
+    if (!current_function = "") then (*not in function*)
+        let idx = addr/4 in
+        if idx+2 <= 9 then
+              comment (Printf.sprintf "STORE %s in $t%d" reg (idx+2))
+          @@  move regs.(idx) reg
+        else  comment (Printf.sprintf "STORE %s at %d" reg (addr-7*4))
+          @@  sw reg (addr-7*4) sp
+      else
+            push reg
 
 let load reg addr = 
-    let idx = addr/4 in
-    if idx+2 <= 9 then
-          comment (Printf.sprintf "LOAD %s from $t%d" reg (idx+2))
-      @@  move reg regs.(idx)
-    else  comment (Printf.sprintf "LOAD %s at %d" reg (addr-7*4))
-      @@  lw reg (addr-7*4) sp
+    if (!current_function = "") then (*not in function*)
+        let idx = addr/4 in
+        if idx+2 <= 9 then
+              comment (Printf.sprintf "LOAD %s from $t%d" reg (idx+2))
+          @@  move reg regs.(idx)
+        else  comment (Printf.sprintf "LOAD %s at %d" reg (addr-7*4))
+          @@  lw reg (addr-7*4) sp
+      else
+        pop reg
 
-
+(* generate new label *)
 let new_label =
   let cpt = ref (-1) in
   fun () -> incr cpt; Printf.sprintf "__label_%i" !cpt
 
+(* keep track of current label test and label end in a loop 
+   for break & continue instructions
+*)
 let cur_loop_test = ref ("")
 let cur_loop_end = ref ("")
 
+(* utils *)
 let int_of_bool b = if b then 1 else 0
+let rec index_of_i el l i = 
+        if List.nth l i = el then i
+          else index_of_i el l i+1
+let index_of el l = index_of_i el l 0
+
 
 let rec tr_binop op e1 e2=
   let offset = incr_offset () in
@@ -90,8 +111,18 @@ and tr_expr e =
   match e with
     | Cst i   ->      li t0 i
     | Bool b  ->      (tr_expr (Cst (int_of_bool b)))
-    | Var str ->      la t0 str
-                  @@  lw t0 0 t0
+    | Var str ->      if (!current_function) != "" then  (* if we're in a function*)
+                        let params = (Hashtbl.find sym_table !current_function) in
+                          if (List.exists (fun e -> e = str) params) then (*symbol is local*)
+                              let idx = (index_of str params) in
+                              lw t0 ((idx+1)*4) fp
+                          else (*symbol is global*)
+                              la t0 str
+                          @@  lw t0 0 t0
+                      else (* symbol is global*)
+                          la t0 str
+                      @@  lw t0 0 t0 
+
     | Binop(op, e1, e2) -> let r = match op with (* check for immediate op*)
                             | Add | Sub as op -> let r = match e1, e2 with
                                                   | _, Cst i -> tr_binop_ri op e1 i
@@ -113,8 +144,9 @@ and tr_expr e =
                                               @@  addi sp sp offset
                                               @@  push t0
                                               @@  jal "print_int"
+                                              @@  subi sp sp 4
                                               @@  pop t0
-                                              @@  subi sp sp (offset)
+                                              @@  subi sp sp offset
                                           else failwith "print_int takes only one argument"
                         | "power" ->      if List.length se = 2 then
                                           let xe = List.nth se 0 in (*t0*)
@@ -128,12 +160,27 @@ and tr_expr e =
                                             @@  push t1
                                             @@  push t0
                                             @@  jal "power"
+                                            @@  subi sp sp 4
                                             @@  pop t0
                                             @@  subi sp sp offset
                                             @@  load t1 offset
 
                                           else failwith "power takes two argument"
-                        | _ -> failwith "function doesn't exist"
+                        | _ ->      if List.length se = 1 then
+                                          let e1 = List.nth se 0 in
+                                          let offset = incr_offset () in
+                                          save t1 offset
+                                      @@  tr_expr e1
+                                      @@  addi sp sp offset
+                                      @@  push t0
+                                      @@  la t1 id
+                                      @@  jalr t1
+                                      @@  subi sp sp 4
+                                      @@  pop t0
+                                      @@  subi sp sp offset
+                                      @@  load t1 offset
+                                      else nop
+                                    
                                         in r
 and tr_instr i =
   match i with
@@ -182,6 +229,10 @@ and tr_instr i =
     | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
     | Continue -> b !cur_loop_test
+    | Return e ->     
+                      tr_expr e
+                  @@  sw t0 0 fp
+                  @@  jr ra
     | _ -> failwith "instr not implemented"
       
 and tr_seq = function
@@ -226,17 +277,18 @@ let translate_program prog =
     @@ jr   ra
     @@ comment "print_int"
     @@ label "print_int"
-    @@ lw a0 4 sp
+    @@ move fp sp
+    @@ lw a0 4 fp
     @@ li v0 1
     @@ syscall
-    @@ sw a0 0 sp
-    @@ subi sp sp 4
+    @@ sw a0 0 fp
     @@ jr ra
     
     @@ comment "power"
     @@ label "power"
-    @@ lw s0 8 sp
-    @@ lw s1 4 sp
+    @@ move fp sp
+    @@ lw s0 8 fp
+    @@ lw s1 4 fp
     @@ li t0 1
     @@ b "power_loop_guard"
     @@ label "power_loop_code"
@@ -244,16 +296,33 @@ let translate_program prog =
     @@ subi s0 s0 1
     @@ label "power_loop_guard"
     @@ bgtz s0 "power_loop_code"
-    @@ sw t0 0 sp
-    @@ subi sp sp 4
+    @@ sw t0 0 fp
     @@ jr ra
   in
 
   let main_code = tr_seq prog.main in
   let text = init @@ main_code @@ close @@ built_ins
-  and data = List.fold_right
+          @@(List.fold_right
+            (fun fun_def code ->  let fname = fun_def.name in
+                                  let fcode = fun_def.code in
+                                  let old_f = !current_function in
+                                  Hashtbl.add sym_table fname fun_def.params;
+                                  current_function := fname;
+                                  let ret = 
+                                  label fname
+                              @@  move fp sp(*
+                              @@  move a0 fp
+                              @@  li v0 1
+                              @@  syscall*)
+                              @@  tr_seq fcode
+                              @@  code in
+                                  current_function := old_f; ret
+              )
+              prog.functions nop
+              )
+  and data = (List.fold_right
     (fun id code -> label id @@ dword [0] @@ code)
-    prog.globals (label "arg" @@ dword [0])
+    prog.globals (label "arg" @@ dword [0])) 
   in
   
   { text; data }
