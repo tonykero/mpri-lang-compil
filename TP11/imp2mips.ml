@@ -12,21 +12,18 @@ let current_function = ref("")
 let push reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 sp  @@ subi sp sp 4
 let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0 sp
 
-let push_fp reg = comment (Printf.sprintf "PUSH %s" reg) @@ sw reg 0 fp  @@ subi fp fp 4
-let pop_fp  reg = comment (Printf.sprintf "POP %s" reg) @@ addi fp fp 4 @@ lw reg 0 fp
-
 (* replaces push & pop with absolute addressing *)
 let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
-let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
+let regs = [||] (*[|t2;t3;t4;t5;t6;t7;t8;t9|]*)
 
 let save reg addr =
     if (!current_function = "") then (*not in function*)
         let idx = addr/4 in
-        if idx+2 <= 9 then
+        if idx < (Array.length regs) then
               comment (Printf.sprintf "STORE %s in $t%d" reg (idx+2))
           @@  move regs.(idx) reg
-        else  comment (Printf.sprintf "STORE %s at %d" reg (addr-7*4))
+        else  comment (Printf.sprintf "STORE %s at %d" reg (-(addr-7*4)))
           @@  sw reg (addr-7*4) sp
       else
             push reg
@@ -34,10 +31,10 @@ let save reg addr =
 let load reg addr = 
     if (!current_function = "") then (*not in function*)
         let idx = addr/4 in
-        if idx+2 <= 9 then
+        if idx < (Array.length regs) then
               comment (Printf.sprintf "LOAD %s from $t%d" reg (idx+2))
           @@  move reg regs.(idx)
-        else  comment (Printf.sprintf "LOAD %s at %d" reg (addr-7*4))
+        else  comment (Printf.sprintf "LOAD %s at %d" reg (-(addr-7*4)))
           @@  lw reg (addr-7*4) sp
       else
         pop reg
@@ -141,12 +138,13 @@ and tr_expr e =
                                             let e = List.nth se 0 in
                                             let offset = !addr in
                                                   tr_expr e
-                                              @@  addi sp sp offset
+                                              @@  subi sp sp offset
                                               @@  push t0
                                               @@  jal "print_int"
-                                              @@  subi sp sp 4
-                                              @@  pop t0
-                                              @@  subi sp sp offset
+                                              @@  lw t0 0 fp
+                                              @@  addi sp sp 12
+                                              @@  sw t0 0 sp
+                                              @@  addi sp sp offset
                                           else failwith "print_int takes only one argument"
                         | "power" ->      if List.length se = 2 then
                                           let xe = List.nth se 0 in (*t0*)
@@ -156,13 +154,14 @@ and tr_expr e =
                                             @@  tr_expr ne
                                             @@  move t1 t0
                                             @@  tr_expr xe
-                                            @@  addi sp sp offset
+                                            @@  subi sp sp offset
                                             @@  push t1
                                             @@  push t0
                                             @@  jal "power"
-                                            @@  subi sp sp 4
-                                            @@  pop t0
-                                            @@  subi sp sp offset
+                                            @@  lw t0 0 fp
+                                            @@  addi sp sp 16
+                                            @@  sw t0 0 sp
+                                            @@  addi sp sp offset
                                             @@  load t1 offset
 
                                           else failwith "power takes two argument"
@@ -171,14 +170,16 @@ and tr_expr e =
                                           let offset = incr_offset () in
                                           save t1 offset
                                       @@  tr_expr e1
-                                      @@  addi sp sp offset
-                                      @@  push t0
+                                      @@  subi sp sp offset (*switch to relative addressing*)
+                                      (*sp points on result address*)
+                                      @@  push t0               (* [An, ..., A1], sp = &A1*)
                                       @@  la t1 id
-                                      @@  jalr t1
-                                      @@  subi sp sp 4
-                                      @@  pop t0
-                                      @@  subi sp sp offset
-                                      @@  load t1 offset
+                                      @@  jalr t1                  (* [An, ..., A1, res, garbage], sp =&garbage, fp = &res *)
+                                      @@  lw t0 0 fp               (*  t0 = res *)
+                                      @@  addi sp sp 12            (* garbage + res + n*)
+                                      @@  sw t0 0 sp               (* [res, garbage], sp=&res*)
+                                      @@  addi sp sp offset        (*back to absolute addressing with res on top*)
+                                      @@  load t1 offset    
                                       else nop
                                     
                                         in r
@@ -278,6 +279,7 @@ let translate_program prog =
     @@ comment "print_int"
     @@ label "print_int"
     @@ move fp sp
+    @@ subi sp sp 4
     @@ lw a0 4 fp
     @@ li v0 1
     @@ syscall
@@ -287,6 +289,7 @@ let translate_program prog =
     @@ comment "power"
     @@ label "power"
     @@ move fp sp
+    @@ subi sp sp 4
     @@ lw s0 8 fp
     @@ lw s1 4 fp
     @@ li t0 1
@@ -310,10 +313,8 @@ let translate_program prog =
                                   current_function := fname;
                                   let ret = 
                                   label fname
-                              @@  move fp sp(*
-                              @@  move a0 fp
-                              @@  li v0 1
-                              @@  syscall*)
+                              @@  move fp sp    (*[An, ..., A1, res] sp = fp = &res*)
+                              @@  subi sp sp 4  (*[An, ..., A1, res] fp &res, sp on top*)
                               @@  tr_seq fcode
                               @@  code in
                                   current_function := old_f; ret
