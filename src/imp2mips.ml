@@ -54,9 +54,9 @@ let cur_loop_end = ref ("")
 
 (* utils *)
 let int_of_bool b = if b then 1 else 0
-let rec index_of_i el l i = 
+let rec index_of_i el l i =
         if List.nth l i = el then i
-          else index_of_i el l i+1
+          else index_of_i el l (i+1)
 let index_of el l = index_of_i el l 0
 
 
@@ -168,21 +168,21 @@ and tr_expr e =
                                             @@  load t1 offset
 
                                           else failwith "power takes two argument"
-                        | _ ->      if List.length se = 1 then
-                                          let e1 = List.nth se 0 in
-                                          let offset = incr_offset () in
+                        | _ ->        
+                                      let offset = incr_offset () in
                                           save t1 offset
-                                      @@  tr_expr e1
                                       @@  subi sp sp offset (*switch to relative addressing*)
-                                      @@  push t0             (* [An, ..., A1], sp = $A1+1*)
-                                      @@  la t1 id
+                                      @@  (List.fold_left
+                                            (fun code expr -> tr_expr expr @@ push t0 @@ code )
+                                            nop se
+                                          )
+                                      @@  la t1 id            (* [An, ..., A1], sp = $A1+1*)
                                       @@  jalr t1             (* [An, ..., A1, res], sp = &res + 1*)
                                       @@  pop t0              (*  t0 = res *)
                                       @@  addi sp sp 12       (* res + n + 4, sp = &An-1*)
                                                               (* [res], sp=(&res)+1*)
                                       @@  addi sp sp offset   (*back to absolute addressing with res on top*)
-                                      @@  load t1 offset    
-                                      else nop
+                                      @@  load t1 offset
                                     
                                         in r
 and tr_instr i =
