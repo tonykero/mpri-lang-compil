@@ -15,6 +15,8 @@ let pop  reg = comment (Printf.sprintf "POP %s" reg) @@ addi sp sp 4 @@ lw reg 0
 (* replaces push & pop with absolute addressing *)
 let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
+
+(* registers + stack extension *)
 let regs = [||] (*[|t2;t3;t4;t5;t6;t7;t8;t9|]*)
 
 let save reg addr =
@@ -58,6 +60,7 @@ let rec index_of_i el l i =
 let index_of el l = index_of_i el l 0
 
 
+(*TODO: Lazy logical operators*)
 let rec tr_binop op e1 e2=
   let offset = incr_offset () in
   let asm_pre =     save t1 offset
@@ -133,7 +136,7 @@ and tr_expr e =
                     | Not ->      tr_expr e
                               @@  not_ t0 t0
                     in r
-    | Call(id, se) -> let r = match id with 
+    | Call(id, se) -> let r = match id with (*TODO: make builtins respect calling convention*)
                         | "print_int" -> if (List.length se) = 1 then
                                             let e = List.nth se 0 in
                                             let offset = !addr in
@@ -171,14 +174,13 @@ and tr_expr e =
                                           save t1 offset
                                       @@  tr_expr e1
                                       @@  subi sp sp offset (*switch to relative addressing*)
-                                      (*sp points on result address*)
-                                      @@  push t0               (* [An, ..., A1], sp = &A1*)
+                                      @@  push t0             (* [An, ..., A1], sp = $A1+1*)
                                       @@  la t1 id
-                                      @@  jalr t1                  (* [An, ..., A1, res, garbage], sp =&garbage, fp = &res *)
-                                      @@  lw t0 0 fp               (*  t0 = res *)
-                                      @@  addi sp sp 12            (* garbage + res + n*)
-                                      @@  sw t0 0 sp               (* [res, garbage], sp=&res*)
-                                      @@  addi sp sp offset        (*back to absolute addressing with res on top*)
+                                      @@  jalr t1             (* [An, ..., A1, res], sp = &res + 1*)
+                                      @@  pop t0              (*  t0 = res *)
+                                      @@  addi sp sp 12       (* res + n + 4, sp = &An-1*)
+                                                              (* [res], sp=(&res)+1*)
+                                      @@  addi sp sp offset   (*back to absolute addressing with res on top*)
                                       @@  load t1 offset    
                                       else nop
                                     
@@ -230,9 +232,14 @@ and tr_instr i =
     | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
     | Continue -> b !cur_loop_test
-    | Return e ->     
+    | Return e ->     (*[An, ..., A1, old_fp,ra, garbage], fp=&old_fp, sp=&garbage*)
                       tr_expr e
-                  @@  sw t0 0 fp
+                  @@  sw t0 (-8) fp (*[An, ..., A1, old_fp,ra, res, garbage], fp=&old_fp*)
+                  @@  subi sp fp 12 (*[An, ..., A1, old_fp,ra, res, garbage], fp=&old_fp, sp=&res*)
+                  @@  pop t0        (*[An, ..., A1, old_fp,ra],t0 = res fp=&old_fp*)
+                  @@  pop ra        (*[An, ..., A1, old_fp], t0 = res fp=&old_fp, ra restored*)
+                  @@  pop fp        (*[An, ..., A1], t0 = res fp restored*)
+                  @@  push t0       (*[An, ..., A1, res],t0 = res , sp=&res+1, fp=old_fp*)
                   @@  jr ra
     | _ -> failwith "instr not implemented"
       
@@ -313,8 +320,10 @@ let translate_program prog =
                                   current_function := fname;
                                   let ret = 
                                   label fname
-                              @@  move fp sp    (*[An, ..., A1, res] sp = fp = &res*)
-                              @@  subi sp sp 4  (*[An, ..., A1, res] fp &res, sp on top*)
+                              @@  move t0 sp    (*tmp save sp*)
+                              @@  push fp       (*[An,...A1,old_fp]*)
+                              @@  push ra       (*[An,...A1,old_fp,ra] sp = &ra+1*)
+                              @@  move fp t0    (*[An, ..., A1, old_fp,ra] fp = &old_fp, sp =&ra+1*)
                               @@  tr_seq fcode
                               @@  code in
                                   current_function := old_f; ret

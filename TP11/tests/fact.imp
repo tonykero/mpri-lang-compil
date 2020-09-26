@@ -1,0 +1,17 @@
+// Affiche 'Ok'
+
+function fact(n) {
+  if (n < 1) {
+    return(1);
+  } else {
+    return(n * fact(n-1));
+  }
+}
+
+main {
+  if (fact(6) == 720) {
+    putchar(79); putchar(107);
+  } else {
+    putchar(75); putchar(111);
+  }
+}
