@@ -168,6 +168,7 @@ and tr_expr e =
                                         in r
 and tr_instr i =
   match i with
+    | Proc(id, se) -> tr_expr (Call(id, se))
     | Putchar(e) ->     tr_expr e
                     @@  move a0 t0
                     @@  li v0 11
