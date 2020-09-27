@@ -12,6 +12,7 @@ function print_boolean(b) {
         putchar(115);
         putchar(101);
     }
+    return 0;
 }
 
 function sqrt(n) {

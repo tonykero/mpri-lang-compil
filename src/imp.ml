@@ -14,7 +14,6 @@ type expression =
       
 type instruction =
   | Proc    of string * expression list
-  | Putchar of expression
   | Set     of string * expression
   | If      of expression * sequence * sequence
   | While   of expression * sequence

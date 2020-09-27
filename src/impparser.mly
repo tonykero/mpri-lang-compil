@@ -16,7 +16,7 @@
 %token VAR FUNCTION COMMA
 %token MAIN
 %token LPAR RPAR BEGIN END SEMI
-%token PUTCHAR SET IF ELSE WHILE FOR BREAK CONTINUE RETURN
+%token SET IF ELSE WHILE FOR BREAK CONTINUE RETURN
 %token EOF
 
 
@@ -66,7 +66,7 @@ set_expr:
 ;
 
 instruction:
-| PUTCHAR LPAR e=expression RPAR SEMI { Putchar(e) }
+| f=IDENT LPAR params=separated_list(COMMA, expression) RPAR SEMI { Proc(f, params) }
 | s=set_expr SEMI { s }
 | IF LPAR c=expression RPAR
     BEGIN s1=list(instruction) END

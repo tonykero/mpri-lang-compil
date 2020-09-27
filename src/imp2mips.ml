@@ -169,10 +169,6 @@ and tr_expr e =
 and tr_instr i =
   match i with
     | Proc(id, se) -> tr_expr (Call(id, se))
-    | Putchar(e) ->     tr_expr e
-                    @@  move a0 t0
-                    @@  li v0 11
-                    @@  syscall
     | Set(str, e)->     let offset = incr_offset () in
                         save t1 offset
                     @@  tr_expr e
@@ -289,7 +285,21 @@ let translate_program prog =
     @@ pop fp
     @@ push a0
     @@ jr ra
-    
+
+    @@ comment "putchar"
+    @@ label "putchar"
+    @@ move t0 sp
+    @@ push fp
+    @@ push ra
+    @@ move fp t0
+    @@ lw a0 4 fp
+    @@ li v0 11
+    @@ syscall
+    @@ pop ra
+    @@ pop fp
+    @@ push a0
+    @@ jr ra
+
     @@ comment "power"
     @@ label "power"
     @@ move t0 sp
