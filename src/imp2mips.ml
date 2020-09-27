@@ -1,11 +1,18 @@
 open Imp
 open Mips
 
-type sym_table_type = (string, string list) Hashtbl.t
-
+(* associate function name to fixed-length array of size 2,
+    containing  parameter names
+            and local variable names
+*)
+type sym_table_type = (string, string list array) Hashtbl.t
 let (sym_table: sym_table_type) = Hashtbl.create 64
 let current_function = ref("")
 
+let params_from fun_name = (Hashtbl.find sym_table !current_function).(0)
+let locals_from fun_name = (Hashtbl.find sym_table !current_function).(1)
+let idx_to_local idx = (idx+2)*(-4)  (*[-inf;-8]*)
+let idx_to_param idx = (idx+1)*(4)   (*[4;+inf]*)
 (* abandon push & pop for absolute adressing
  * but use it for function arguments/result
 *)
@@ -58,6 +65,7 @@ let rec index_of_i el l i =
         if List.nth l i = el then i
           else index_of_i el l (i+1)
 let index_of el l = index_of_i el l 0
+let in_list el l = (List.exists (fun e -> e = el) l)
 
 
 (*TODO: Lazy logical operators*)
@@ -112,14 +120,18 @@ and tr_expr e =
     | Cst i   ->      li t0 i
     | Bool b  ->      (tr_expr (Cst (int_of_bool b)))
     | Var str ->      if (!current_function) != "" then  (* if we're in a function*)
-                        let params = (Hashtbl.find sym_table !current_function) in
-                          if (List.exists (fun e -> e = str) params) then (*symbol is local*)
-                              let idx = (index_of str params) in
-                              lw t0 ((idx+1)*4) fp
-                          else (*symbol is global*)
-                              la t0 str
-                          @@  lw t0 0 t0
-                      else (* symbol is global*)
+                        let params = params_from sym_table in
+                        let locals = locals_from sym_table in
+                        if (in_list str locals) then (*symbol is local*)
+                            let idx = (index_of str locals) in
+                            lw t0 (idx_to_local idx) fp       (*[-inf;-8] relative to fp*)
+                        else if (in_list str params) then (*symbol is param*)
+                            let idx = (index_of str params) in
+                            lw t0 (idx_to_param idx) fp          (*[4;+inf] relative to fp*)
+                        else (* assume symbol is global*)
+                            la t0 str
+                        @@  lw t0 0 t0
+                      else (* assume symbol is global*)
                           la t0 str
                       @@  lw t0 0 t0 
 
@@ -168,7 +180,7 @@ and tr_expr e =
                                             @@  load t1 offset
 
                                           else failwith "power takes two argument"
-                        | _ ->        
+                        | _ ->        let nbr_param = (List.length se) in
                                       let offset = incr_offset () in
                                           save t1 offset
                                       @@  subi sp sp offset (*switch to relative addressing*)
@@ -179,8 +191,8 @@ and tr_expr e =
                                       @@  la t1 id            (* [An, ..., A1], sp = $A1+1*)
                                       @@  jalr t1             (* [An, ..., A1, res], sp = &res + 1*)
                                       @@  pop t0              (*  t0 = res *)
-                                      @@  addi sp sp 12       (* res + n + 4, sp = &An-1*)
-                                                              (* [res], sp=(&res)+1*)
+                                      @@  addi sp sp (nbr_param*4)       (* n + 4, sp = &An-1*)
+                                                              (* [], sp=(&res)+1*)
                                       @@  addi sp sp offset   (*back to absolute addressing with res on top*)
                                       @@  load t1 offset
                                     
@@ -194,8 +206,21 @@ and tr_instr i =
     | Set(str, e)->     let offset = incr_offset () in
                         save t1 offset
                     @@  tr_expr e
-                    @@  la t1 str
-                    @@  sw t0 0 t1
+                    @@  if (!current_function != "") then (*in a function*)
+                            let params = params_from !current_function in
+                            let locals = locals_from !current_function in
+                            if in_list str locals then 
+                                let idx = index_of str locals in
+                                sw t0 (idx_to_local idx) fp
+                            else if in_list str params then
+                                let idx = index_of str params in
+                                sw t0 (idx_to_param idx) fp
+                            else
+                                la t1 str
+                            @@  sw t0 0 t1
+                        else
+                              la t1 str
+                          @@  sw t0 0 t1
                     @@  load t1 offset
     | If(cond, se1, se2) ->   let else_label = new_label () in
                               let end_label  = new_label () in
@@ -232,16 +257,13 @@ and tr_instr i =
     | For(init, cond, iter, s) -> (tr_seq ([init] @ [While(cond, s @ [iter])]) )
     | Break -> b !cur_loop_end
     | Continue -> b !cur_loop_test
-    | Return e ->     (*[An, ..., A1, old_fp,ra, garbage], fp=&old_fp, sp=&garbage*)
-                      tr_expr e
-                  @@  sw t0 (-8) fp (*[An, ..., A1, old_fp,ra, res, garbage], fp=&old_fp*)
-                  @@  subi sp fp 12 (*[An, ..., A1, old_fp,ra, res, garbage], fp=&old_fp, sp=&res*)
-                  @@  pop t0        (*[An, ..., A1, old_fp,ra],t0 = res fp=&old_fp*)
+    | Return e ->     (*[An, ..., A1, old_fp,ra,x0,...,xn, garbage], fp=&old_fp, sp=&garbage*)
+                      tr_expr e     (*[An, ..., A1, old_fp,ra,x0,...,xn, garbage],, t0 = res, fp=&old_fp, sp=&garbage*)
+                  @@  subi sp fp 8  (*sp =&ra+1*)
                   @@  pop ra        (*[An, ..., A1, old_fp], t0 = res fp=&old_fp, ra restored*)
                   @@  pop fp        (*[An, ..., A1], t0 = res fp restored*)
-                  @@  push t0       (*[An, ..., A1, res],t0 = res , sp=&res+1, fp=old_fp*)
+                  @@  push t0    (*[An, ..., A1, res],t0 = res , sp=&res+1, fp=old_fp*)
                   @@  jr ra
-    | _ -> failwith "instr not implemented"
       
 and tr_seq = function
   | []   -> nop
@@ -316,7 +338,7 @@ let translate_program prog =
             (fun fun_def code ->  let fname = fun_def.name in
                                   let fcode = fun_def.code in
                                   let old_f = !current_function in
-                                  Hashtbl.add sym_table fname fun_def.params;
+                                  Hashtbl.add sym_table fname [|fun_def.params;fun_def.locals|];
                                   current_function := fname;
                                   let ret = 
                                   label fname
@@ -324,6 +346,7 @@ let translate_program prog =
                               @@  push fp       (*[An,...A1,old_fp]*)
                               @@  push ra       (*[An,...A1,old_fp,ra] sp = &ra+1*)
                               @@  move fp t0    (*[An, ..., A1, old_fp,ra] fp = &old_fp, sp =&ra+1*)
+                              @@  subi sp sp ((List.length fun_def.locals)*4) (*reserve space for locals*)
                               @@  tr_seq fcode
                               @@  code in
                                   current_function := old_f; ret
