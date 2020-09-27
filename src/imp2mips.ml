@@ -24,7 +24,7 @@ let addr = ref (-4)
 let incr_offset () = addr := !addr + 4;!addr
 
 (* registers + stack extension *)
-let regs = [||] (*[|t2;t3;t4;t5;t6;t7;t8;t9|]*)
+let regs = [|t2;t3;t4;t5;t6;t7;t8;t9|]
 
 let save reg addr =
     if (!current_function = "") then (*not in function*)
@@ -149,37 +149,6 @@ and tr_expr e =
                               @@  not_ t0 t0
                     in r
     | Call(id, se) -> let r = match id with (*TODO: make builtins respect calling convention*)
-                        | "print_int" -> if (List.length se) = 1 then
-                                            let e = List.nth se 0 in
-                                            let offset = !addr in
-                                                  tr_expr e
-                                              @@  subi sp sp offset
-                                              @@  push t0
-                                              @@  jal "print_int"
-                                              @@  lw t0 0 fp
-                                              @@  addi sp sp 12
-                                              @@  sw t0 0 sp
-                                              @@  addi sp sp offset
-                                          else failwith "print_int takes only one argument"
-                        | "power" ->      if List.length se = 2 then
-                                          let xe = List.nth se 0 in (*t0*)
-                                          let ne = List.nth se 1 in (*t1*)
-                                          let offset = incr_offset () in
-                                                save t1 offset
-                                            @@  tr_expr ne
-                                            @@  move t1 t0
-                                            @@  tr_expr xe
-                                            @@  subi sp sp offset
-                                            @@  push t1
-                                            @@  push t0
-                                            @@  jal "power"
-                                            @@  lw t0 0 fp
-                                            @@  addi sp sp 16
-                                            @@  sw t0 0 sp
-                                            @@  addi sp sp offset
-                                            @@  load t1 offset
-
-                                          else failwith "power takes two argument"
                         | _ ->        let nbr_param = (List.length se) in
                                       let offset = incr_offset () in
                                           save t1 offset
@@ -307,18 +276,25 @@ let translate_program prog =
     @@ jr   ra
     @@ comment "print_int"
     @@ label "print_int"
-    @@ move fp sp
-    @@ subi sp sp 4
+    @@ move t0 sp
+    @@ push fp
+    @@ push ra
+    @@ move fp t0
     @@ lw a0 4 fp
     @@ li v0 1
     @@ syscall
-    @@ sw a0 0 fp
+    (*epilogue*)
+    @@ pop ra
+    @@ pop fp
+    @@ push a0
     @@ jr ra
     
     @@ comment "power"
     @@ label "power"
-    @@ move fp sp
-    @@ subi sp sp 4
+    @@ move t0 sp
+    @@ push fp
+    @@ push ra
+    @@ move fp t0
     @@ lw s0 8 fp
     @@ lw s1 4 fp
     @@ li t0 1
@@ -328,8 +304,12 @@ let translate_program prog =
     @@ subi s0 s0 1
     @@ label "power_loop_guard"
     @@ bgtz s0 "power_loop_code"
-    @@ sw t0 0 fp
+    (*epilogue*)
+    @@ pop ra
+    @@ pop fp
+    @@ push t0
     @@ jr ra
+    
   in
 
   let main_code = tr_seq prog.main in
