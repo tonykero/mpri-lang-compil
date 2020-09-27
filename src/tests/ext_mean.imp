@@ -1,9 +1,0 @@
-var x;
-
-function mean(a,b,c) {
-    return (a+b+c)/3;
-}
-
-main {
-    x = print_int(mean(1000,30,-2));
-}
