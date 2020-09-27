@@ -19,3 +19,22 @@ Va compiler le fichier [circle.imp](src/tests/circle.imp) puis éxécuter l'asse
 
 Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scripts imp présents dans le dossier [tests](src/tests)
 
+## Extensions
+**Sujet 1.1:**
+- [x] Instructions Combinées
+- [x] Expressions constantes pré-calculées
+- [x] Utilisation non-systématique de la pile
+- [x] Précalculation des adresses (global)
+- [ ] Opérateurs paresseux
+- [x] Interruptions de boucles
+- [x] Boucle for
+
+**Sujet 1.2:**
+- [x] A: Procédures
+- [ ] C: Fonction main
+- [ ] C: Convention affinée
+- [ ] C: Tail call optimization
+- [ ] B: Convention d'appel avec registres
+- [ ] C: Tail Call + B
+- [ ] D: TAC IR
+- [ ] D: Variables locales -> $t* autant que possible
