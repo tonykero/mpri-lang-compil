@@ -31,7 +31,7 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 
 **Sujet 1.2:**
 - [x] A: Procédures
-- [ ] C: Fonction main
+- [x] C: Fonction main
 - [ ] C: Convention affinée
 - [ ] C: Tail call optimization
 - [ ] B: Convention d'appel avec registres

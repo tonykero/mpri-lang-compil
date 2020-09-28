@@ -35,8 +35,8 @@
 program:
 | globals=list(variable_decl)
     functions=list(function_def)
-    main=main EOF
-    { {main; functions; globals} }
+    EOF
+    { {main=[Proc("main", [Var("arg")])]; functions; globals} }
 | error { let pos = $startpos in
           let message =
             Printf.sprintf
@@ -50,13 +50,14 @@ variable_decl:
 | VAR id=IDENT SEMI { id }
 ;
 
-main:
-| MAIN BEGIN s=list(instruction) END { s }
-;
-
+fname:
+| FUNCTION name=IDENT { name}
+| FUNCTION MAIN { "main" }
 
 function_def:
-| FUNCTION name=IDENT LPAR params=separated_list(COMMA, IDENT) RPAR
+| MAIN BEGIN locals=list(variable_decl) code=list(instruction) END
+  { let params = ["arg"] in let name = "main" in {name; code; params; locals} }
+| name=fname LPAR params=separated_list(COMMA, IDENT) RPAR
     BEGIN locals=list(variable_decl) code=list(instruction) END
     { {name; code; params; locals} }
 ;

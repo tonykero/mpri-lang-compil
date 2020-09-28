@@ -2,7 +2,7 @@ var i;
 var j;
 var c;
 
-main {
+function main(arg) {
   c = true;
   i = 0;
 
