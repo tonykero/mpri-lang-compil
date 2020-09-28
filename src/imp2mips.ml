@@ -68,32 +68,48 @@ let index_of el l = index_of_i el l 0
 let in_list el l = (List.exists (fun e -> e = el) l)
 
 
-(*TODO: Lazy logical operators*)
-let rec tr_binop op e1 e2=
-  let offset = incr_offset () in
-  let asm_pre =     save t1 offset
-                @@  tr_expr e2
-                @@  move t1 t0
-                @@  tr_expr e1
-              in
-  let asm_op = match op with
-    | Add ->    add t0 t0 t1
-    | Sub ->    sub t0 t0 t1
-    | Mul ->    mul t0 t0 t1
-    | Div ->    div t0 t0 t1
-    | Rem ->    rem t0 t0 t1
-    | Eq  ->    seq t0 t0 t1
-    | Neq ->    sne t0 t0 t1
-    | Lt  ->    slt t0 t0 t1
-    | Le  ->    sle t0 t0 t1
-    | Gt  ->    sgt t0 t0 t1
-    | Ge  ->    sge t0 t0 t1
-    | And ->   and_ t0 t0 t1
-    | Or  ->    or_ t0 t0 t1
-    | _ -> failwith("Binary operator not implemented")
-    in
-  let asm_end = load t1 offset
-  in    asm_pre @@ asm_op @@ asm_end
+let rec tr_lazy_op op e1 e2 = 
+  let asm_pre   =   tr_expr e1 in
+  let end_label = new_label () in
+  match op with
+    | And -> Some   (asm_pre
+                @@  beqz t0 end_label (*if false -> false*)
+                @@  tr_expr e2        (*if e1 true -> e2*)
+                @@  label end_label)
+    | Or -> Some    (asm_pre
+                @@  bnez t0 end_label (*if true -> true*)
+                @@  tr_expr e1        (*if e1 false -> e2*)
+                @@  label end_label
+                @@  nop)
+    | _ -> None
+and tr_binop op e1 e2=
+  let maybe_lazy_op = tr_lazy_op op e1 e2 in
+  let r = match maybe_lazy_op with
+    | None -> let offset = incr_offset () in
+              let asm_pre =     save t1 offset
+                            @@  tr_expr e2
+                            @@  move t1 t0
+                            @@  tr_expr e1
+                          in
+              let asm_op = match op with
+                | Add ->    add t0 t0 t1
+                | Sub ->    sub t0 t0 t1
+                | Mul ->    mul t0 t0 t1
+                | Div ->    div t0 t0 t1
+                | Rem ->    rem t0 t0 t1
+                | Eq  ->    seq t0 t0 t1
+                | Neq ->    sne t0 t0 t1
+                | Lt  ->    slt t0 t0 t1
+                | Le  ->    sle t0 t0 t1
+                | Gt  ->    sgt t0 t0 t1
+                | Ge  ->    sge t0 t0 t1
+                | And ->   and_ t0 t0 t1
+                | Or  ->    or_ t0 t0 t1
+                | _ -> failwith("Binary operator not implemented")
+                in
+              let asm_end = load t1 offset
+              in    asm_pre @@ asm_op @@ asm_end
+    | _ -> Option.get maybe_lazy_op in r
 and tr_binop_ri op e1 i =
     let asm_pre =   tr_expr e1
               in
@@ -148,7 +164,7 @@ and tr_expr e =
                     | Not ->      tr_expr e
                               @@  not_ t0 t0
                     in r
-    | Call(id, se) -> let r = match id with (*TODO: make builtins respect calling convention*)
+    | Call(id, se) -> let r = match id with
                         | _ ->        let nbr_param = (List.length se) in
                                       let offset = incr_offset () in
                                           save t1 offset

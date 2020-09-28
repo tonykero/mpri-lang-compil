@@ -1,0 +1,19 @@
+var a;
+var b;
+
+function ko_a() {
+    a = 107;
+    return 0;
+}
+function ko_b() {
+    b = 79;
+    return 0;
+}
+
+main {
+    a = 79;
+    b = 107;
+    if(true || ko_a()) { putchar(a); } else {}
+    if(false && ko_b()) {} else { putchar(b);}
+    putchar(10);
+}

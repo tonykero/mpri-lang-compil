@@ -25,7 +25,7 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 - [x] Expressions constantes pré-calculées
 - [x] Utilisation non-systématique de la pile
 - [x] Précalculation des adresses (global)
-- [ ] Opérateurs paresseux
+- [x] Opérateurs paresseux
 - [x] Interruptions de boucles
 - [x] Boucle for
 
@@ -38,3 +38,4 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 - [ ] C: Tail Call + B
 - [ ] D: TAC IR
 - [ ] D: Variables locales -> $t* autant que possible
+
