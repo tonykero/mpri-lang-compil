@@ -1,0 +1,19 @@
+var tab;
+var i;
+
+function malloc(size) {
+    return sbrk(size);
+}
+
+main {
+  arg = 6;
+  tab = malloc(4*(arg+1));
+  tab[0] = 0;
+  tab[1] = 1;
+  i = 1;
+  while (i < arg) {
+    tab[i+1] = tab[i] + tab[i-1];
+    i = i + 1;
+  }
+  print_int(tab[arg]);
+}

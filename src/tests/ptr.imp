@@ -1,0 +1,16 @@
+var a;
+var ptr;
+
+function main(arg) {
+    a = 5;
+    ptr = &a;
+    print_int(a);
+    putchar(10);
+    print_int(ptr);
+    putchar(10);
+    a = 8;
+    *ptr = a + *ptr;
+    print_int(*ptr);
+    putchar(10);
+    return 0;
+}
