@@ -1,13 +1,22 @@
 var tab;
 var i;
+var fptr;
 
 function malloc(size) {
+    // size must be a multiple of 4
+    if(size % 4 != 0) {
+        size = size + (4-(size%4));
+    } else {}
+    print_int(size);
+    putchar(10);
     return sbrk(size);
 }
 
 main {
   arg = 6;
   tab = malloc(4*(arg+1));
+  print_int(tab);
+  putchar(10);
   tab[0] = 0;
   tab[1] = 1;
   i = 1;

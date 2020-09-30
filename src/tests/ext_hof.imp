@@ -1,0 +1,29 @@
+var fptr;
+var op;
+var tab;
+
+function malloc(size) {
+    // size must be a multiple of 4
+    if(size % 4 != 0) {
+        size = size + (4-(size%4));
+    } else {}
+    print_int(size);
+    putchar(10);
+    return sbrk(size);
+}
+
+function add(a,b) { return a+b;}
+function sub(a,b) { return a-b;}
+function mul(a,b) { return a*b;}
+function div(a,b) { return a/b;}
+
+main {
+    tab = malloc(4*5);
+    tab[0] = &add;
+    tab[1] = &sub;
+    tab[2] = &mul;
+    tab[3] = &div;
+    op = tab[2];
+    print_int((*op)(2,3));
+
+}
