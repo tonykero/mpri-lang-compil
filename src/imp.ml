@@ -11,16 +11,25 @@ type expression =
   | Unop  of unop * expression
   | Binop of binop * expression * expression
   | Call  of string * expression list
-      
+  | Deref of expression (* *ptr *)
+  | Addr  of string (* &ptr *)
+  | PCall of expression * expression list (* ( *ptr)(se) *)
+  | Sbrk  of expression
+
 type instruction =
-  | Proc    of string * expression list
+  (*| Proc    of string * expression list*)
   | Set     of string * expression
   | If      of expression * sequence * sequence
   | While   of expression * sequence
   | For     of instruction * expression * instruction * sequence
   | Break | Continue
   | Return  of expression
+  | Write   of expression * expression  (* *ptr = e *)
+  | Expr    of expression
 and sequence = instruction list
+
+let array_access (t: expression) (i: expression): expression =
+  failwith "array access not implemented (imp.ml)"
 
 type function_def = {
   name: string;

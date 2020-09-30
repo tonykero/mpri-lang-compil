@@ -18,6 +18,7 @@
 %token LPAR RPAR BEGIN END SEMI
 %token SET IF ELSE WHILE FOR BREAK CONTINUE RETURN
 %token EOF
+%token SBRK AMPERSAND LBRACKET RBRACKET
 
 
 %left AND OR
@@ -26,6 +27,7 @@
 %left STAR SLASH PRCT
 %left LSL LSR
 %nonassoc NOT
+%nonassoc LBRACKET
 
 %start program
 %type <Imp.program> program
@@ -36,7 +38,7 @@ program:
 | globals=list(variable_decl)
     functions=list(function_def)
     EOF
-    { {main=[Proc("main", [Var("arg")])]; functions; globals} }
+    { {main=[Expr(Call("main", [Var("arg")]))]; functions; globals} }
 | error { let pos = $startpos in
           let message =
             Printf.sprintf
@@ -67,7 +69,6 @@ set_expr:
 ;
 
 instruction:
-| f=IDENT LPAR params=separated_list(COMMA, expression) RPAR SEMI { Proc(f, params) }
 | s=set_expr SEMI { s }
 | IF LPAR c=expression RPAR
     BEGIN s1=list(instruction) END
@@ -79,6 +80,10 @@ instruction:
 | BREAK SEMI  { Break }
 | CONTINUE SEMI { Continue }
 | RETURN e=expression SEMI { Return(e) }
+| e=expression SEMI { Expr(e) }
+| STAR e1=expression SET e2=expression SEMI { Write(e1, e2) }
+| e1=expression LBRACKET e2=expression RBRACKET SET e3=expression SEMI
+    { Write(array_access e1 e2, e3) }
 ;
 
 
@@ -111,6 +116,15 @@ expression:
     | _ -> Binop(op, e1, e2)
     }
 | f=IDENT LPAR params=separated_list(COMMA, expression) RPAR { Call(f, params) }
+| STAR e=expression { Deref(e) }
+| AMPERSAND id=IDENT { Addr(id) }
+| SBRK LPAR e=expression RPAR { Sbrk(e) }
+| LPAR e=expression RPAR LPAR params=separated_list(COMMA, expression) RPAR
+    { match e with
+      | Deref(e') -> PCall(e', params)
+      | _ -> failwith "syntax error : call with function pointer should use *" }
+| e1=expression LBRACKET e2=expression RBRACKET
+    { Deref(array_access e1 e2) }
 ;
 
 

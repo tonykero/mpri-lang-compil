@@ -18,6 +18,7 @@
         "continue", CONTINUE;
         "function", FUNCTION;
         "return",   RETURN;
+        "sbrk",     SBRK;
       ] ;
     fun s ->
       try  Hashtbl.find h s
@@ -89,6 +90,12 @@ rule token = parse
       { BEGIN }
   | "}"
       { END }
+  | "["
+      { LBRACKET }
+  | "]"
+      { RBRACKET }
+  | "&"
+      { AMPERSAND }
   | _
       { failwith ("Unknown character : " ^ (lexeme lexbuf)) }
   | eof

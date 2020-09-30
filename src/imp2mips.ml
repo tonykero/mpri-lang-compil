@@ -182,9 +182,25 @@ and tr_expr e =
                                       @@  load t1 offset
                                     
                                         in r
+    | Sbrk(e) ->    tr_expr e
+                @@  move a0 t0
+                @@  li v0 9
+                @@  syscall
+    | Deref(e) ->   tr_expr e
+                @@  lw t0 0 t0
+    | Addr(str) ->  la t0 str
+    | _ -> failwith "Expression not implemented"
 and tr_instr i =
   match i with
-    | Proc(id, se) -> tr_expr (Call(id, se))
+    | Write(ea, e) ->   let offset = incr_offset () in
+                        save t1 offset
+                    @@  tr_expr ea
+                    @@  move t1 t0
+                    @@  tr_expr e
+                    @@  sw t0 0 t1
+                    @@  load t1 offset
+
+    | Expr(e) -> tr_expr e
     | Set(str, e)->     let offset = incr_offset () in
                         save t1 offset
                     @@  tr_expr e
