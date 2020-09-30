@@ -1,0 +1,42 @@
+var tab;
+
+function malloc(size) {
+    // size must be a multiple of 4
+    if(size % 4 != 0) {
+        size = size + (4-(size%4));
+    } else {}
+    print_int(size);
+    putchar(10);
+    return sbrk(size);
+}
+
+function sum(arr, size) {
+    var i;
+    var sum;
+    sum = 0;
+    for(i = 0, i < size, i = i+1) {
+        sum = sum + arr[i];
+    }
+    return sum;
+}
+
+function sum2d(arr, size1, size2) {
+    var i;
+    var sum;
+    var tmp;
+    sum = 0;
+    for(i = 0, i < size1, i = i+1) {
+        sum = sum + sum(arr[i], size2);
+    }
+    return sum;
+}
+
+main {
+    var tmp;
+    tab =   {
+        { 5, -1, 19 },  // 23
+        { 17, 3, -10 }, // 10
+        { 90, -80, 2 }  // 12
+    };
+    print_int(sum2d(tab, 3, 3));
+}

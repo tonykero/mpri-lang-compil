@@ -196,6 +196,21 @@ and tr_expr e =
                 @@  lw t0 0 t0
     | Addr(str) ->  la t0 str
     | PCall(addr, se) -> call_procedure (Ex(addr)) se
+    | Array(se) ->  let arr_size = List.length se in
+                    let offset = incr_offset () in
+                    save t1 offset
+                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), Cst(arr_size))])) (*t0 = malloc(4*arr_size)*)
+                @@  move t1 t0
+                @@  (List.fold_right2
+                        (fun expr index code ->
+                                tr_expr expr
+                            @@  sw t0 (index*4) t1
+                            @@  code)
+                        se    (List.init arr_size (fun id -> id))
+                        nop)
+                @@  move t0 t1
+                @@  load t1 offset
+
     | _ -> failwith "Expression not implemented"
 and tr_instr i =
   match i with

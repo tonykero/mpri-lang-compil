@@ -40,7 +40,7 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 - [ ] D: Variables locales -> $t* autant que possible
 
 **Sujet 1.3:**
-- [ ] Tableau: Séquences de valeurs
+- [x] Tableau: Séquences de valeurs
 - [ ] Tableau: Répétition d'une valeur
 - [ ] Tableau: Compréhension
 - [ ] malloc: extensions

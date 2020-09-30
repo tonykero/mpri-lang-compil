@@ -15,6 +15,7 @@ type expression =
   | Addr  of string (* &ptr *)
   | PCall of expression * expression list (* ( *ptr)(se) *)
   | Sbrk  of expression
+  | Array of expression list (* { ..., ... } *)
 
 type instruction =
   (*| Proc    of string * expression list*)

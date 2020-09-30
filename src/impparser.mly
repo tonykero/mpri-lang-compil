@@ -125,6 +125,8 @@ expression:
       | _ -> failwith "syntax error : call with function pointer should use *" }
 | e1=expression LBRACKET e2=expression RBRACKET
     { Deref(array_access e1 e2) }
+| BEGIN contents=separated_nonempty_list(COMMA, expression) END
+    { Array(contents) }
 ;
 
 
