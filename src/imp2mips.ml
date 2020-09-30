@@ -67,8 +67,30 @@ let rec index_of_i el l i =
 let index_of el l = index_of_i el l 0
 let in_list el l = (List.exists (fun e -> e = el) l)
 
+type addr_type = 
+    | Str of string
+    | Ex of Imp.expression
 
-let rec tr_lazy_op op e1 e2 = 
+let rec call_procedure (addr:addr_type) se = 
+        let nbr_param = (List.length se) in
+        let offset = incr_offset () in
+            save t1 offset
+        @@  subi sp sp offset (*switch to relative addressing*)
+        @@  (List.fold_left
+              (fun code expr -> tr_expr expr @@ push t0 @@ code )
+              nop se
+            )
+            @@ let r = match addr with
+                | Str(s) -> la t1 s
+                | Ex(e) -> tr_expr e @@ move t1 t0 in r
+        (* [An, ..., A1], sp = $A1+1*)
+        @@  jalr t1             (* [An, ..., A1, res], sp = &res + 1*)
+        @@  pop t0              (*  t0 = res *)
+        @@  addi sp sp (nbr_param*4)       (* n + 4, sp = &An-1*)
+                                (* [], sp=(&res)+1*)
+        @@  addi sp sp offset   (*back to absolute addressing with res on top*)
+        @@  load t1 offset
+and tr_lazy_op op e1 e2 = 
   let asm_pre   =   tr_expr e1 in
   let end_label = new_label () in
   match op with
@@ -164,24 +186,7 @@ and tr_expr e =
                     | Not ->      tr_expr e
                               @@  not_ t0 t0
                     in r
-    | Call(id, se) -> let r = match id with
-                        | _ ->        let nbr_param = (List.length se) in
-                                      let offset = incr_offset () in
-                                          save t1 offset
-                                      @@  subi sp sp offset (*switch to relative addressing*)
-                                      @@  (List.fold_left
-                                            (fun code expr -> tr_expr expr @@ push t0 @@ code )
-                                            nop se
-                                          )
-                                      @@  la t1 id            (* [An, ..., A1], sp = $A1+1*)
-                                      @@  jalr t1             (* [An, ..., A1, res], sp = &res + 1*)
-                                      @@  pop t0              (*  t0 = res *)
-                                      @@  addi sp sp (nbr_param*4)       (* n + 4, sp = &An-1*)
-                                                              (* [], sp=(&res)+1*)
-                                      @@  addi sp sp offset   (*back to absolute addressing with res on top*)
-                                      @@  load t1 offset
-                                    
-                                        in r
+    | Call(id, se) -> call_procedure (Str(id)) se
     | Sbrk(e) ->    tr_expr e
                 @@  move a0 t0
                 @@  li v0 9
@@ -190,6 +195,7 @@ and tr_expr e =
     | Deref(e) ->   tr_expr e
                 @@  lw t0 0 t0
     | Addr(str) ->  la t0 str
+    | PCall(addr, se) -> call_procedure (Ex(addr)) se
     | _ -> failwith "Expression not implemented"
 and tr_instr i =
   match i with
