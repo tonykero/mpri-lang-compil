@@ -78,7 +78,7 @@ let rec tr_lazy_op op e1 e2 =
                 @@  label end_label)
     | Or -> Some    (asm_pre
                 @@  bnez t0 end_label (*if true -> true*)
-                @@  tr_expr e1        (*if e1 false -> e2*)
+                @@  tr_expr e2        (*if e1 false -> e2*)
                 @@  label end_label
                 @@  nop)
     | _ -> None
