@@ -186,6 +186,7 @@ and tr_expr e =
                 @@  move a0 t0
                 @@  li v0 9
                 @@  syscall
+                @@  move t0 v0
     | Deref(e) ->   tr_expr e
                 @@  lw t0 0 t0
     | Addr(str) ->  la t0 str

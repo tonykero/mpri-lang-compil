@@ -29,7 +29,8 @@ type instruction =
 and sequence = instruction list
 
 let array_access (t: expression) (i: expression): expression =
-  failwith "array access not implemented (imp.ml)"
+  Binop(Add, t, Binop(Mul, i, Cst(4)))
+  (*failwith "array access not implemented (imp.ml)"*)
 
 type function_def = {
   name: string;
