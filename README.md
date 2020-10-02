@@ -41,6 +41,6 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 
 **Sujet 1.3:**
 - [x] Tableau: Séquences de valeurs
-- [ ] Tableau: Répétition d'une valeur
+- [x] Tableau: Répétition d'une valeur
 - [ ] Tableau: Compréhension
 - [ ] malloc: extensions

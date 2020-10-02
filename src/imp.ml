@@ -5,17 +5,18 @@ type binop =
   | And | Or
       
 type expression =
-  | Cst   of int
-  | Bool  of bool
-  | Var   of string
-  | Unop  of unop * expression
-  | Binop of binop * expression * expression
-  | Call  of string * expression list
-  | Deref of expression (* *ptr *)
-  | Addr  of string (* &ptr *)
-  | PCall of expression * expression list (* ( *ptr)(se) *)
-  | Sbrk  of expression
-  | Array of expression list (* { ..., ... } *)
+  | Cst     of int
+  | Bool    of bool
+  | Var     of string
+  | Unop    of unop * expression
+  | Binop   of binop * expression * expression
+  | Call    of string * expression list
+  | Deref   of expression                   (* *ptr         *)
+  | Addr    of string                       (* &ptr         *)
+  | PCall   of expression * expression list (* ( *ptr)(se)  *)
+  | Sbrk    of expression                   (* sbrk(e)      *)
+  | Array   of expression list              (* { e1,.., en} *)
+  | Repeat  of expression * expression      (* [e1] * e2    *)
 
 type instruction =
   (*| Proc    of string * expression list*)

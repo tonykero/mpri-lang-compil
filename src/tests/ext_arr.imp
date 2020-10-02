@@ -5,8 +5,6 @@ function malloc(size) {
     if(size % 4 != 0) {
         size = size + (4-(size%4));
     } else {}
-    print_int(size);
-    putchar(10);
     return sbrk(size);
 }
 
@@ -32,11 +30,21 @@ function sum2d(arr, size1, size2) {
 }
 
 main {
+    // 79 107
     var tmp;
     tab =   {
         { 5, -1, 19 },  // 23
         { 17, 3, -10 }, // 10
-        { 90, -80, 2 }  // 12
+        { 90, -50, 2 }  // 42
     };
-    print_int(sum2d(tab, 3, 3));
+    putchar(sum2d(tab, 3, 3) + 4);
+    tab = [tab[0][2]] * 5;
+    putchar(sum(tab, 5) + 12);
+    putchar(10);
+    // follow arr contains 3 same adress
+    tab = [ { 25, 100, -50 } ] * 3; // row = 75, total = 225
+    putchar(sum(tab[0], 3) + 4);
+    // decreasing a value by 40, decrease the total sum by 120, total = 105
+    tab[0][0] = tab[0][0]-40;
+    putchar(sum2d(tab, 3, 3) + 2); // 105 + 2 = 107
 }

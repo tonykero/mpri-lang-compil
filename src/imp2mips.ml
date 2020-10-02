@@ -210,7 +210,21 @@ and tr_expr e =
                         nop)
                 @@  move t0 t1
                 @@  load t1 offset
-
+    | Repeat(e,n) ->  let r = match n with
+                        | Cst i ->  let offset = incr_offset () in
+                                    save t1 offset
+                                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), n)])) (*t0 = malloc(4*arr_size)*)
+                                @@  move t1 t0
+                                @@  tr_expr e   (* t0 = e*)
+                                @@  (List.fold_right
+                                      (fun index code ->
+                                            sw t0 (index*4) t1
+                                        @@  code)
+                                      (List.init i (fun id -> id))
+                                      nop)
+                                @@  move t0 t1
+                                @@  load t1 offset
+                        | _ -> failwith "Repetition expression, must have constant size" in r
     | _ -> failwith "Expression not implemented"
 and tr_instr i =
   match i with

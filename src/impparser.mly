@@ -127,6 +127,8 @@ expression:
     { Deref(array_access e1 e2) }
 | BEGIN contents=separated_nonempty_list(COMMA, expression) END
     { Array(contents) }
+| LBRACKET e=expression RBRACKET STAR n=expression
+    { Repeat(e,n) }
 ;
 
 
