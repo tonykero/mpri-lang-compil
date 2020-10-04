@@ -1,0 +1,137 @@
+var blocks_ptr;
+
+// first fit
+// next fit
+// best fit
+function malloc(size) {
+    var ptr;
+    var new_ptr;
+    ptr = blocks_ptr;
+    // size must be a multiple of 4
+    if(size % 4 != 0) {
+        size = size + (4-(size%4));
+    } else {}
+    // add header overhead
+    size = size + 4;
+    while(true) {
+        if(head_getsize(ptr) >= size && head_isfree(ptr)) {
+            return fragment(ptr, size) + 4;
+        } else {
+            if(head_next(ptr) == 0) {
+                break;
+            } else {
+                ptr = head_next(ptr);
+            }
+        }
+    }
+    // if here then allocate new block
+    // at this point, ptr is last block
+    putchar(097);putchar(100);putchar(100);putchar(32);print_int(size);putchar(10);
+    ptr = head_write(sbrk(size), size, 0, 1);
+    return new_ptr + 4;
+}
+
+function fragment(ptr, size) {
+    var ptr_size;
+    var new_ptr;
+    var new_size;
+    var old_next;
+    ptr_size = head_getsize(ptr);
+    if(ptr_size == size) {
+        return ptr;
+    } else { // fragment block and update linked list
+        new_size = ptr_size - size;
+        new_ptr  = ptr + new_size;
+        old_next = head_next(ptr);
+        ptr      = head_write(ptr, size, 0, 1); // allocated
+        new_ptr  = head_write(new_ptr, new_size, 0, 0); // free
+        ptr      = head_setnext(ptr, new_ptr);
+        print_int(new_ptr);
+        new_ptr  = head_setnext(new_ptr, old_next);
+        putchar(115);putchar(112);putchar(108);putchar(105);putchar(116);putchar(32);
+        print_int(size);putchar(47);print_int(new_size);putchar(10);
+        return ptr;
+    }
+}
+
+function head_write(ptr, size, next_head, free) {
+    // 4 bytes header (32 bits)
+    // 15 bits  = size (max = 32767)
+    // 1  bit   = status (free = 0/allocated=1)
+    // 16 bits  = difference to the next head ptr, 0 = none (max = 65535)
+    *ptr = 0;
+    *ptr =  (size   << 17) | // size 
+            (free   << 16) | // free
+            (next_head);          // 
+    return ptr;
+}
+// 000000000000000|0|0000000000000000
+
+function head_isfree(ptr) {
+    return ((*ptr) & (1 << 16)) == 0;
+}
+
+function head_getsize(ptr) {
+    return (*ptr) >> 17; // get
+}
+
+function head_setnext(ptr, newptr) {
+    var diff;
+    if(newptr == 0) { return ptr; } else {}
+    *ptr = ((*ptr) >> 16) << 16; // clear
+    diff = newptr - ptr;
+    *ptr = (*ptr) | diff;  // set
+    return ptr;
+}
+
+function head_next(ptr) {
+    var diff;
+    diff = ((*ptr) << 16) >> 16; // clear & get
+    if(diff == 0) {
+        return 0;
+    } else {
+        return ptr+diff;
+    }
+}
+
+function init_heap(size) {
+    var ptr;
+    ptr = head_write(sbrk(size),size,0, 0);
+    blocks_ptr = ptr;
+    putchar(105);putchar(110);putchar(105);putchar(116);putchar(32);print_int(size);putchar(10);
+    return 0;
+}
+
+function print_block_info(ptr) {
+    putchar(45);putchar(45);putchar(45);putchar(45);putchar(45);putchar(45);putchar(10);
+    putchar(105);putchar(110);putchar(102);putchar(111);putchar(58);putchar(32);
+        print_int(ptr);putchar(10);
+    putchar(115);putchar(105);putchar(122);putchar(101);putchar(58);putchar(32);
+        print_int(head_getsize(ptr));putchar(10);
+    putchar(102);putchar(114);putchar(101);putchar(101);putchar(58);putchar(32);
+        print_int(head_isfree(ptr));putchar(10);
+    putchar(110);putchar(101);putchar(120);putchar(116);putchar(58);putchar(32);
+        print_int(head_next(ptr));putchar(10);
+    return 0;
+}
+
+function print_blocks(ptr) {
+    var next;
+    next = head_next(ptr);
+    print_block_info(ptr);
+    if(next == 0) {
+        return 1;
+    } else {
+        return 1 + print_blocks(next);
+    }
+}
+
+main {
+    var tab;
+    init_heap(128);
+    tab = [{ 3, 5, 8 }] * 3;
+    // tab memleak
+    tab = malloc(4 * 27);
+    print_int(print_blocks(blocks_ptr));putchar(10);
+    return 0;
+}
