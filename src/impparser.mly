@@ -107,6 +107,8 @@ expression:
                         | Le  -> Bool(i1 <= i2)
                         | Gt  -> Bool(i1 > i2)
                         | Ge  -> Bool(i1 >= i2)
+                        | Lsr -> Cst(i1 lsr i2)
+                        | Lsl -> Cst(i1 lsl i2)
                         | _ -> failwith("cst arithmetic/relational op not implemented")
                         in r
     | Bool b1, Bool b2 -> let r = match op with

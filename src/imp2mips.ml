@@ -125,8 +125,11 @@ and tr_binop op e1 e2=
                 | Le  ->    sle t0 t0 t1
                 | Gt  ->    sgt t0 t0 t1
                 | Ge  ->    sge t0 t0 t1
+                | Lsr ->    srlv t0 t0 t1
+                | Lsl ->    sllv t0 t0 t1
+                (*
                 | And ->   and_ t0 t0 t1
-                | Or  ->    or_ t0 t0 t1
+                | Or  ->    or_ t0 t0 t1*)
                 | _ -> failwith("Binary operator not implemented")
                 in
               let asm_end = load t1 offset
@@ -225,7 +228,7 @@ and tr_expr e =
                                 @@  move t0 t1
                                 @@  load t1 offset
                         | _ -> failwith "Repetition expression, must have constant size" in r
-    | _ -> failwith "Expression not implemented"
+    (*| _ -> failwith "Expression not implemented"*)
 and tr_instr i =
   match i with
     | Write(ea, e) ->   let offset = incr_offset () in

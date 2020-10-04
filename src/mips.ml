@@ -78,8 +78,8 @@ let or_  r1 r2 r3 = ins "or %s, %s, %s"   r1 r2 r3
 let not_ r1 r2    = ins "not %s, %s"      r1 r2
 let neg  r1 r2    = ins "neg %s, %s"      r1 r2
 
-let sll  r1 r2 r3 = ins "sll %s, %s, %s"  r1 r2 r3
-let srl  r1 r2 r3 = ins "srl %s, %s, %s"  r1 r2 r3
+let sllv r1 r2 r3 = ins "sllv %s, %s, %s"  r1 r2 r3
+let srlv r1 r2 r3 = ins "srlv %s, %s, %s"  r1 r2 r3
   
 let seq  r1 r2 r3 = ins "seq %s, %s, %s"  r1 r2 r3
 let sne  r1 r2 r3 = ins "sne %s, %s, %s"  r1 r2 r3
