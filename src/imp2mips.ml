@@ -127,6 +127,8 @@ and tr_binop op e1 e2=
                 | Ge  ->    sge t0 t0 t1
                 | Lsr ->    srlv t0 t0 t1
                 | Lsl ->    sllv t0 t0 t1
+                | Land->    and_ t0 t0 t1
+                | Lor ->    or_  t0 t0 t1
                 (*
                 | And ->   and_ t0 t0 t1
                 | Or  ->    or_ t0 t0 t1*)

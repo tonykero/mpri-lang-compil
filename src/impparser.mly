@@ -6,7 +6,7 @@
 
 %}
 
-%token PLUS MINUS STAR SLASH PRCT
+%token PLUS MINUS STAR SLASH PRCT LOR
 %token LSL LSR EQ NEQ LT LE GT GE
 %token AND OR NOT
 
@@ -109,6 +109,8 @@ expression:
                         | Ge  -> Bool(i1 >= i2)
                         | Lsr -> Cst(i1 lsr i2)
                         | Lsl -> Cst(i1 lsl i2)
+                        | Land-> Cst(i1 land i2)
+                        | Lor -> Cst(i1 lor i2)
                         | _ -> failwith("cst arithmetic/relational op not implemented")
                         in r
     | Bool b1, Bool b2 -> let r = match op with
@@ -155,5 +157,7 @@ expression:
 | GE { Ge }
 | AND { And }
 | OR { Or }
+| AMPERSAND { Land }
+| LOR { Lor }
 ;
 

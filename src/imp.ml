@@ -1,8 +1,8 @@
 type unop = Minus | Not
 type binop =
-  | Add | Sub | Mul | Div | Rem | Lsl | Lsr
+  | Add | Sub | Mul | Div | Rem
   | Eq  | Neq | Lt  | Le  | Gt  | Ge
-  | And | Or
+  | Lsl | Lsr | Land| Lor | And | Or  
       
 type expression =
   | Cst     of int

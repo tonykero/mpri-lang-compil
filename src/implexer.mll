@@ -96,6 +96,8 @@ rule token = parse
       { RBRACKET }
   | "&"
       { AMPERSAND }
+  | "|" 
+      { LOR }
   | _
       { failwith ("Unknown character : " ^ (lexeme lexbuf)) }
   | eof
