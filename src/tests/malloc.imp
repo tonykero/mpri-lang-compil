@@ -26,6 +26,7 @@ function malloc(size) {
     }
     // if here then allocate new block
     // at this point, ptr is last block
+    // add
     putchar(097);putchar(100);putchar(100);putchar(32);print_int(size);putchar(10);
     ptr = head_write(sbrk(size), size, 0, 1);
     return new_ptr + 4;
@@ -46,8 +47,8 @@ function fragment(ptr, size) {
         ptr      = head_write(ptr, size, 0, 1); // allocated
         new_ptr  = head_write(new_ptr, new_size, 0, 0); // free
         ptr      = head_setnext(ptr, new_ptr);
-        print_int(new_ptr);
         new_ptr  = head_setnext(new_ptr, old_next);
+        // split x/y
         putchar(115);putchar(112);putchar(108);putchar(105);putchar(116);putchar(32);
         print_int(size);putchar(47);print_int(new_size);putchar(10);
         return ptr;
@@ -70,6 +71,16 @@ function head_write(ptr, size, next_head, free) {
 function head_isfree(ptr) {
     return ((*ptr) & (1 << 16)) == 0;
 }
+function head_free(ptr) {
+    var next;
+    var size;
+    next = head_next(ptr);
+    size = head_getsize(ptr);
+    *ptr = (*ptr) >> 31;
+    ptr = head_write(ptr, size, 0, 0);
+    ptr = head_setnext(ptr, next);
+    return ptr;
+}
 
 function head_getsize(ptr) {
     return (*ptr) >> 17; // get
@@ -77,7 +88,7 @@ function head_getsize(ptr) {
 
 function head_setnext(ptr, newptr) {
     var diff;
-    if(newptr == 0) { return ptr; } else {}
+    if(newptr == 0) { *ptr = ((*ptr) >> 16) << 16; return ptr; } else {}
     *ptr = ((*ptr) >> 16) << 16; // clear
     diff = newptr - ptr;
     *ptr = (*ptr) | diff;  // set
@@ -98,18 +109,24 @@ function init_heap(size) {
     var ptr;
     ptr = head_write(sbrk(size),size,0, 0);
     blocks_ptr = ptr;
+    // init
     putchar(105);putchar(110);putchar(105);putchar(116);putchar(32);print_int(size);putchar(10);
     return 0;
 }
 
 function print_block_info(ptr) {
+    // ------
     putchar(45);putchar(45);putchar(45);putchar(45);putchar(45);putchar(45);putchar(10);
+    // info
     putchar(105);putchar(110);putchar(102);putchar(111);putchar(58);putchar(32);
         print_int(ptr);putchar(10);
+    // size
     putchar(115);putchar(105);putchar(122);putchar(101);putchar(58);putchar(32);
         print_int(head_getsize(ptr));putchar(10);
+    // free
     putchar(102);putchar(114);putchar(101);putchar(101);putchar(58);putchar(32);
         print_int(head_isfree(ptr));putchar(10);
+    // next
     putchar(110);putchar(101);putchar(120);putchar(116);putchar(58);putchar(32);
         print_int(head_next(ptr));putchar(10);
     return 0;
@@ -126,11 +143,35 @@ function print_blocks(ptr) {
     }
 }
 
+function merge(ptr, nextptr) {
+    var new_next;
+    var new_size;
+    if(nextptr == 0) { return ptr;} else {}
+    new_next = head_next(nextptr);
+    new_size = head_getsize(ptr) + head_getsize(nextptr);
+        // merge x/y
+        putchar(109);putchar(101);putchar(114);putchar(103);putchar(101);putchar(32);
+        print_int(head_getsize(ptr));putchar(47);print_int(head_getsize(nextptr));putchar(10);
+    ptr = head_write(ptr, new_size, 0, 0);
+    ptr = head_setnext(ptr, new_next);
+    return ptr;
+}
+
+function free(ptr) {
+    ptr = ptr - 4;
+    ptr = head_free(ptr);
+    while(head_next(ptr) != 0 && head_isfree(head_next(ptr))) {
+        ptr = merge(ptr, head_next(ptr));
+    }
+    return 0;
+}
+
 main {
     var tab;
     init_heap(128);
     tab = [{ 3, 5, 8 }] * 3;
-    // tab memleak
+    free(tab[0]);
+    free(tab);
     tab = malloc(4 * 27);
     print_int(print_blocks(blocks_ptr));putchar(10);
     return 0;
