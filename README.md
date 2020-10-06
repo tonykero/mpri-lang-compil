@@ -20,6 +20,13 @@ Va compiler le fichier [circle.imp](src/tests/circle.imp) puis éxécuter l'asse
 Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scripts imp présents dans le dossier [tests](src/tests)
 
 ## Extensions
+
+> Tous les sujets sont complets, seules quelques extensions du sujet 1.2 n'ont pas été réalisées.
+>>Concernant malloc() et free(), l'implémentation est une liste chaînée unidirectionnelle first-fit
+>>> free() fusionne tous les blocs à droite si ils sont à la suite et non alloués
+>>>> malloc et free ne sont pas builtins, et il y a donc des implémentations minimales afin de rendre des exemples fonctionnels
+>>>> L'implémentation complète réside dans [malloc.imp](src/tests/malloc.imp)
+
 **Sujet 1.1:**
 - [x] Instructions Combinées
 - [x] Expressions constantes pré-calculées
@@ -28,6 +35,7 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 - [x] Opérateurs paresseux
 - [x] Interruptions de boucles
 - [x] Boucle for
+- [x] en plus: Opérateurs binaires (shift, and, or)
 
 **Sujet 1.2:**
 - [x] A: Procédures
@@ -42,5 +50,4 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 **Sujet 1.3:**
 - [x] Tableau: Séquences de valeurs
 - [x] Tableau: Répétition d'une valeur
-- [ ] Tableau: Compréhension
-- [ ] malloc: extensions
+- [x] Tableau: Compréhension
