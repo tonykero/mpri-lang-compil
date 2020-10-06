@@ -1,0 +1,20 @@
+var i;
+
+function malloc(size) {
+    // size must be a multiple of 4
+    if(size % 4 != 0) {
+        size = size + (4-(size%4));
+    } else {}
+    print_int(size);
+    putchar(10);
+    return sbrk(size);
+}
+
+
+main {
+    var tab;
+    tab = [power(2,i) for i in range(11)];
+    for(i = 0, i < 11, i = i+1) {
+        print_int(tab[i]);putchar(10);
+    }
+}

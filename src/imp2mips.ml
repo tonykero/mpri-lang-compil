@@ -230,6 +230,32 @@ and tr_expr e =
                                 @@  move t0 t1
                                 @@  load t1 offset
                         | _ -> failwith "Repetition expression, must have constant size" in r
+    | Comprehension(e, str, n) -> let r = match n with
+                        | Cst i ->  let offset = incr_offset () in
+                                    save t1 offset
+                                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), n)])) (*t0 = malloc(4*arr_size)*)
+                                @@  move t1 t0
+                                @@  la t0 str (* i = 0 *)
+                                @@  push t1
+                                @@  li t1 0
+                                @@  sw t1 0 t0
+                                @@  pop t1
+                                @@  (List.fold_right
+                                      (fun index code ->
+                                            tr_expr e
+                                        @@  sw t0 (index*4) t1 (* t[0..n] = e *)
+                                        @@  li t0 (index+1)        (* i=0..n *)
+                                        @@  push t1
+                                        @@  la t1 str
+                                        @@  sw t0 0 t1
+                                        @@  pop t1
+                                        @@  code)
+                                      (List.init i (fun id -> id))
+                                      nop)
+                                @@  move t0 t1
+                                @@  load t1 offset
+                        | _ -> failwith "Comprehension expression, must have constant size" in r
+                                
     (*| _ -> failwith "Expression not implemented"*)
 and tr_instr i =
   match i with

@@ -17,6 +17,7 @@ type expression =
   | Sbrk    of expression                   (* sbrk(e)      *)
   | Array   of expression list              (* { e1,.., en} *)
   | Repeat  of expression * expression      (* [e1] * e2    *)
+  | Comprehension of expression * string * expression (* [ expr for str in range(Cst) ] *)
 
 type instruction =
   (*| Proc    of string * expression list*)

@@ -19,6 +19,8 @@
         "function", FUNCTION;
         "return",   RETURN;
         "sbrk",     SBRK;
+        "in",       IN;
+        "range",    RANGE;
       ] ;
     fun s ->
       try  Hashtbl.find h s

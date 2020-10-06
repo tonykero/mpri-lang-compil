@@ -16,7 +16,7 @@
 %token VAR FUNCTION COMMA
 %token MAIN
 %token LPAR RPAR BEGIN END SEMI
-%token SET IF ELSE WHILE FOR BREAK CONTINUE RETURN
+%token SET IF ELSE WHILE FOR BREAK CONTINUE RETURN IN RANGE
 %token EOF
 %token SBRK AMPERSAND LBRACKET RBRACKET
 
@@ -133,6 +133,8 @@ expression:
     { Array(contents) }
 | LBRACKET e=expression RBRACKET STAR n=expression
     { Repeat(e,n) }
+| LBRACKET e=expression FOR var=IDENT IN RANGE LPAR n=CST RPAR RBRACKET
+    { Comprehension(e,var,Cst(n)) }
 ;
 
 
