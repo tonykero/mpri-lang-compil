@@ -29,8 +29,12 @@ and sequence = instruction list
 
 let array_access (t: expression) (i: expression): expression =
   Binop(Add, t, Binop(Mul, i, Cst(4)))
-  (*failwith "array access not implemented (imp.ml)"*)
-
+let array_get (t: expression) (i: expression): expression =
+  Deref(array_access t i)
+let array_set (t: expression) (i: expression) (e: expression): instruction =
+  Write(array_access t i, e)
+let array_create (n: expression): expression =
+  Call("malloc", [Binop(Mul, n, Cst 4)])
 type function_def = {
   name: string;
   code: sequence;
