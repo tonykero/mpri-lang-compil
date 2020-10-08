@@ -1,5 +1,5 @@
 .vscode/
 _build/
-impc.native
+*.native
 
 *.asm
