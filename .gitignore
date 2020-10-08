@@ -3,3 +3,5 @@ _build/
 *.native
 
 *.asm
+
+src/func/tests/*.imp
