@@ -20,11 +20,12 @@ let rec to_expr expr = match expr with
                                 | _ -> failwith "cvar" in r 
         | Unop(op, e)       -> Imp.Unop(op,to_expr e)
         | Binop(op, e1, e2) -> Imp.Binop(op, to_expr e1, to_expr e2)
+        | Tpl(se)           -> Imp.Array(List.map to_expr se)
+        | TplGet(e,i)       -> Imp.Deref(Imp.array_access (to_expr e) (Imp.Cst(i)))
         | _ -> failwith "CLJ2IMP: expression not implemented"
         
 let rec to_instr expr = match expr with
         | LetIn(str,e1,e2) -> [Imp.Set(str, to_expr e1);] @ to_instr e2
-
         | _ -> [Imp.Set("res", to_expr expr)]
 
 let translate_program prog =
