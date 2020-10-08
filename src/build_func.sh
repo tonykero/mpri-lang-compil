@@ -1,2 +1,2 @@
 #!/bin/bash
-ocamlbuild -Is impc,common func/func.native
+ocamlbuild -Is impc_reference,common func/func.native
