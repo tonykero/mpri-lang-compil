@@ -54,9 +54,9 @@ let pp_program prog out_channel =
   let margin = ref 0 in
   let print_margin () = for i = 1 to 2 * !margin do print " " done in
   
-  let rec pp_instruction = function
+  let rec pp_instruction = function(*)
     | Putchar(e) ->
-      print "putchar(%s);" (pp_expression e)
+      print "putchar(%s);" (pp_expression e)*)
     | Set(x, e) ->
       print "%s = %s;" x (pp_expression e)
     | If(c, s1, s2) ->

@@ -2,7 +2,7 @@
 
   open Lexing
   open Imp
-  
+  open Ops
 
 %}
 

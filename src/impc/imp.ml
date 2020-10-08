@@ -1,9 +1,5 @@
-type unop = Minus | Not
-type binop =
-  | Add | Sub | Mul | Div | Rem
-  | Eq  | Neq | Lt  | Le  | Gt  | Ge
-  | Lsl | Lsr | Land| Lor | And | Or  
-      
+open Ops
+
 type expression =
   | Cst     of int
   | Bool    of bool

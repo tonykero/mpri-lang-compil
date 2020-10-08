@@ -1,5 +1,6 @@
 open Imp
 open Mips
+open Ops
 
 (* associate function name to fixed-length array of size 2,
     containing  parameter names
