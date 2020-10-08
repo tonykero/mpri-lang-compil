@@ -43,9 +43,6 @@ let rec pp_expression: expression -> string = function
     sprintf "(%s)(%s)" (pp_expression f) (pp_args args)
   | Sbrk(e) ->
     sprintf "sbrk(%s)" (pp_expression e)
-  | Array(se) ->  let arr_str = (List.fold_right (fun expr str -> sprintf "%s,%s" (pp_expression expr) str ) se "") in
-                  let trimmed = String.sub arr_str 0 ((String.length arr_str)-1) in
-    sprintf "{%s}" trimmed
       
 and pp_args: expression list -> string = function
   | [] -> ""

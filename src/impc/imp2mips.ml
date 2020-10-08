@@ -205,7 +205,7 @@ and tr_expr e =
     | Array(se) ->  let arr_size = List.length se in
                     let offset = incr_offset () in
                     save t1 offset
-                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), Cst(arr_size))])) (*t0 = malloc(4*arr_size)*)
+                @@  tr_expr (Imp.array_create (Cst arr_size)) (*t0 = malloc(4*arr_size)*)
                 @@  move t1 t0
                 @@  (List.fold_right2
                         (fun expr index code ->
@@ -219,7 +219,7 @@ and tr_expr e =
     | Repeat(e,n) ->  let r = match n with
                         | Cst i ->  let offset = incr_offset () in
                                     save t1 offset
-                                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), n)])) (*t0 = malloc(4*arr_size)*)
+                                @@  tr_expr (array_create n) (*t0 = malloc(4*arr_size)*)
                                 @@  move t1 t0
                                 @@  tr_expr e   (* t0 = e*)
                                 @@  (List.fold_right
@@ -234,7 +234,7 @@ and tr_expr e =
     | Comprehension(e, str, n) -> let r = match n with
                         | Cst i ->  let offset = incr_offset () in
                                     save t1 offset
-                                @@  tr_expr (Call("malloc", [Binop(Mul, Cst(4), n)])) (*t0 = malloc(4*arr_size)*)
+                                @@  tr_expr (array_create n) (*t0 = malloc(4*arr_size)*)
                                 @@  move t1 t0
                                 @@  la t0 str (* i = 0 *)
                                 @@  push t1
