@@ -11,6 +11,7 @@ type expression =
   | Tpl   of expression list
   | TplGet of expression * int
   | FunRef of string
+  | Clos  of string * string list
   | App   of expression * expression
   | If    of expression * expression * expression
   | LetIn of string * expression * expression
@@ -20,6 +21,7 @@ type function_def = {
   name: string;
   code: expression;
   param: string;
+  free_vars: string list
 }
 
 type program = {
