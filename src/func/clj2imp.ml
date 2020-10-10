@@ -25,7 +25,7 @@ let rec to_instr expr = match expr with
         | Cst(i)            -> set_instr "res" (Imp.Cst i)
         | Bool(b)           -> set_instr "res" (Imp.Bool b)
         | Var(v)            -> let r = match v with
-                                | Name str -> add_var str;set_instr "res" (Imp.Var(str))
+                                | Name str -> set_instr "res" (Imp.Var(str))
                                 | _ -> failwith "cvar" in r
         | _ -> failwith "to_instr: CLJ2IMP: expression not implemented"
 and to_seq expr = match expr with
@@ -66,7 +66,7 @@ and to_seq expr = match expr with
                             @   [set_instr clos_var (Imp.Var("res"))]
                             @   to_seq e2
                             @   [set_instr "res" (Imp.PCall(Imp.Deref(Imp.Var(ptr)),[Imp.Var("res");Imp.Var(clos_var)]))]
-        | LetIn(str,e1,e2)  ->  to_seq e1
+        | LetIn(str,e1,e2)  ->  add_var str;to_seq e1
                         @       [(set_instr str (Imp.Var("res")))]
                         @       to_seq e2
         
@@ -83,6 +83,7 @@ let tr_fun_def fundef =
             let code    = let fvars = fundef.free_vars in
                         (List.fold_right2 
                             (fun idx str code -> 
+                                add_var str;
                                 [set_instr str (Imp.array_get (Imp.Var "clos") (Cst idx))] @ code 
                             )
                             (List.init (List.length fvars) (fun idx -> idx+1))
