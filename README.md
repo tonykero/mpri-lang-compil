@@ -5,19 +5,25 @@ Compilation d'un langage impératif vers l'assembleur MIPS de [MARS](http://cour
 ## Build
 
 le projet utilise menhir et ocamlbuild  
-Il y a un [script](src/build.sh) pour compiler
+Il y a 2 scripts pour compiler:
+* [build_impc.sh](src/build_impc.sh) pour compiler la partie impc 
+* [build_func.sh](src/build_func.sh) pour compiler la partie func 
 
 ## Execution
 
 Le jar de Mars est directement dans le projet, il faut que java soit installé.
 
-```
-cd src
-./run.sh circle
-```
-Va compiler le fichier [circle.imp](src/tests/circle.imp) puis éxécuter l'assembleur généré avec Mars.
+* Le script [run_impc.sh](src/run_impc.sh) va compiler et exécuter un test inclut dans [src/impc/tests](src/impc/tests)
+* Le script [run_func.sh](src/run_func.sh) va compiler et exécuter un test inclut dans [src/func/tests](src/func/tests)
 
-Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scripts imp présents dans le dossier [tests](src/tests)
+**Example:**
+```
+./run_impc.sh circle
+./run_impc.sh fun2
+```
+
+Les scripts [run_impc_tests.sh](src/run_impc_tests.sh) et [run_func_tests.sh](src/run_func_tests.sh) compile et exécute tous les tests présents dans [src/impc/tests](src/impc/tests) et [src/func/tests](src/func/tests) respectivement
+
 
 ## Extensions
 
@@ -25,7 +31,7 @@ Le script [run_tests.sh](src/run_tests.sh) va compiler et exécuter tous les scr
 >>Concernant malloc() et free(), l'implémentation est une liste chaînée unidirectionnelle first-fit
 >>> free() fusionne tous les blocs à droite si ils sont à la suite et non alloués
 >>>> malloc et free ne sont pas builtins, et il y a donc des implémentations minimales afin de rendre des exemples fonctionnels
->>>> L'implémentation complète réside dans [malloc.imp](src/tests/malloc.imp)
+>>>> L'implémentation complète réside dans [malloc.imp](src/impc/tests/malloc.imp)
 
 **Sujet 1.1:**
 - [x] Instructions Combinées
