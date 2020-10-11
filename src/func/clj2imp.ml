@@ -69,6 +69,9 @@ and to_seq expr = match expr with
         | LetIn(str,e1,e2)  ->  add_var str;to_seq e1
                         @       [(set_instr str (Imp.Var("res")))]
                         @       to_seq e2
+        | LetRec(str,e1,e2)  ->  add_var str;to_seq e1
+                        @       [(set_instr str (Imp.Var("res")))]
+                        @       to_seq e2
         
         | If(c,e1,e2)       ->   to_seq c
                         @       [Imp.If(Imp.Var("res"), (to_seq e1), (to_seq e2))]
