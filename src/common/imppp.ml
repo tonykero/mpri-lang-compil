@@ -22,6 +22,8 @@ let pp_binop: binop -> string = function
   | Ge  -> ">="
   | And -> "&&"
   | Or  -> "||"
+  | Land-> "&"
+  | Lor -> "|"
   
 let rec pp_expression: expression -> string = function
   | Cst(n) -> string_of_int n
@@ -43,6 +45,7 @@ let rec pp_expression: expression -> string = function
     sprintf "(%s)(%s)" (pp_expression f) (pp_args args)
   | Sbrk(e) ->
     sprintf "sbrk(%s)" (pp_expression e)
+  | _ -> failwith "IMPPP: expr not implemented"
       
 and pp_args: expression list -> string = function
   | [] -> ""
@@ -77,6 +80,12 @@ let pp_program prog out_channel =
       print "*%s = %s;" (pp_expression d) (pp_expression e)
     | Expr(e) ->
       print "%s;" (pp_expression e)
+    | Break ->
+      print "break;"
+    | Continue ->
+      print "continue;"
+    | _ -> failwith "IMPPP: instr not implemented"
+
 
   and pp_seq = function
     | [] -> ()
