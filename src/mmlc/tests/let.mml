@@ -1,0 +1,4 @@
+let f (x: int) (y: int) = x + y in
+let g (y: int) = f 5 x in
+let a = (g 1) in
+a * (a + 1)
