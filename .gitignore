@@ -5,3 +5,5 @@ _build/
 *.asm
 
 src/func/tests/*.imp
+src/mmlc/tests/*.imp
+src/mmlc/tests/*.fun
