@@ -57,7 +57,7 @@ let pp_program prog out_channel =
   let margin = ref 0 in
   let print_margin () = for i = 1 to 2 * !margin do print " " done in
   
-  let rec pp_instruction = function(*)
+  let rec pp_instruction = function(*
     | Putchar(e) ->
       print "putchar(%s);" (pp_expression e)*)
     | Set(x, e) ->
@@ -80,10 +80,10 @@ let pp_program prog out_channel =
       print "*%s = %s;" (pp_expression d) (pp_expression e)
     | Expr(e) ->
       print "%s;" (pp_expression e)
-    | Break ->
+(*    | Break ->
       print "break;"
     | Continue ->
-      print "continue;"
+      print "continue;"*)
     | _ -> failwith "IMPPP: instr not implemented"
 
 
