@@ -36,7 +36,7 @@ let rec (pp_expression: Fun.expression -> string) = function
   | Tpl(el) ->
     sprintf "(%s)" (pp_args el)
   | TplGet(e,i) ->
-    sprintf "%s[%d]" (pp_expression e) (i)
+    sprintf "(%s[%d])" (pp_expression e) (i)
   | Fun(str, e) ->
     sprintf "(fun %s -> %s)" str (pp_expression e)
   | App(e1,e2) ->
