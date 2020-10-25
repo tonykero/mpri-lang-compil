@@ -27,13 +27,15 @@ Les scripts [run_impc_tests.sh](src/run_impc_tests.sh) et [run_func_tests.sh](sr
 
 ## Extensions
 
-> Tous les sujets sont complets, seules quelques extensions du sujet 1.2 n'ont pas été réalisées.
+> Tous les sujets sont complets, seules les extensiosn du sujet 1.2 et des sujets 2 n'ont pas été réalisées.
 >>Concernant malloc() et free(), l'implémentation est une liste chaînée unidirectionnelle first-fit
 >>> free() fusionne tous les blocs à droite si ils sont à la suite et non alloués
 >>>> malloc et free ne sont pas builtins, et il y a donc des implémentations minimales afin de rendre des exemples fonctionnels
 >>>> L'implémentation complète réside dans [malloc.imp](src/impc/tests/malloc.imp)
 
+## Module 1
 **Sujet 1.1:**
+
 - [x] Instructions Combinées
 - [x] Expressions constantes pré-calculées
 - [x] Utilisation non-systématique de la pile
@@ -57,3 +59,16 @@ Les scripts [run_impc_tests.sh](src/run_impc_tests.sh) et [run_func_tests.sh](sr
 - [x] Tableau: Séquences de valeurs
 - [x] Tableau: Répétition d'une valeur
 - [x] Tableau: Compréhension
+
+## Module 2
+
+**Sujet 2.1:**
+- [ ] Affichage simplifié
+- [ ] Garbage collector
+- [ ] Optimisation des appels terminaux
+
+**Sujet 2.2:**
+- [ ] n-uplets généraux
+- [ ] Structures de données & match/with
+- [ ] Inférence de types
+- [ ] Polymoprhisme paramètrique
