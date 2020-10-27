@@ -76,7 +76,7 @@ and to_seq expr = match expr with
                                 let vars = List.map (fun str -> Imp.Var(str)) fvars in
                                 [set_instr "res" (Imp.array_create (Cst (arr_size+1)))]
                             (*store size in header*)
-                            @   [Imp.array_set (Imp.Var "res") (Cst 0) (Binop(Add, Binop(Lsl, (Cst arr_size), Cst 1), Cst 1)) ]
+                            @   [Imp.array_set (Imp.Var "res") (Cst 0) (Binop(Add, Binop(Mul, (Cst arr_size), Cst 2), Cst 1)) ]
                             @   [set_instr ("res") (Binop(Add, Imp.Var("res"), Cst 4))]
                             
                             @   (List.fold_right2 (fun expr idx seq ->
@@ -99,6 +99,7 @@ and to_seq expr = match expr with
                         @       to_seq e2
         
         | If(c,e1,e2)       ->   to_seq c
+                        @       [to_int]
                         @       [Imp.If(Imp.Var("res"), (to_seq e1), (to_seq e2))]
         | _ -> [to_instr expr]
 
