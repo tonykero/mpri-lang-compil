@@ -20,8 +20,8 @@ let new_var =
         add_var var_name;var_name
 
 let rec set_instr str e = Imp.Set(str, e)
-let to_int      = set_instr "res" (Binop(Ops.Lsr, Binop(Ops.Sub, Imp.Var("res"), Imp.Cst(1)), Imp.Cst(1)))
-let to_caml_int = set_instr "res" (Binop(Ops.Add, Binop(Ops.Lsl, Imp.Var("res"), Imp.Cst(1)), Imp.Cst(1)))
+let to_int      = set_instr "res" (Binop(Ops.Div, Binop(Ops.Sub, Imp.Var("res"), Imp.Cst(1)), Imp.Cst(2)))
+let to_caml_int = set_instr "res" (Binop(Ops.Add, Binop(Ops.Mul, Imp.Var("res"), Imp.Cst(2)), Imp.Cst(1)))
 
 let match_int op ret = match op with
                         | Unop(o,_) -> if o == Minus then [ret] else []
@@ -132,9 +132,6 @@ let translate_program prog =
         params      = ["size"];
         locals      = [] 
         } in
-    let eq_1    = Imp.Binop(Ops.Eq, Imp.Var("x"), Imp.Cst(1)) in
-    let eq_0    = Imp.Binop(Ops.Eq, Imp.Var("x"), Imp.Cst(0)) in
-    let eq_01   = Imp.Binop(Ops.Or, eq_0, eq_1) in
     let is_int  = Imp.Binop(Ops.Land, Imp.Var("x"),Imp.Cst(1)) in
     (* https://stackoverflow.com/a/10069969 *)
     let explode s =
@@ -181,15 +178,20 @@ let translate_program prog =
         params = ["x"];
         locals = ["i";"size";"is_clos"];
     } in
+    (* if x negative*)
+    (* x = -((-x + (2^30)) % (2^30-1) + 1) *)
+    let max_ = Imp.Binop(Lsl, Cst 1, Cst 29) in 
+    let (neg_x:Imp.expression) = Unop(Minus, Binop(Add, Cst 1, Binop(Rem,Binop(Add, Unop(Minus,Imp.Var("x")), max_),Binop(Sub, max_, Cst 1)))) in
     let print_def:Imp.function_def = {
         name        = "print";
-        code        =   [Imp.If(eq_01, 
-                                (print_str "bool: ") @ [Imp.Expr(Imp.Call("print_bool", [Imp.Var("x")]))],
-                                [Imp.If(is_int, 
-                                    (print_str "int: ") @ [Imp.Expr(Imp.Call("print_int", [Binop(Lsr, Binop(Sub,Imp.Var("x"), Imp.Cst(1)), Imp.Cst(1))]))],
-                                    (*(print_str "ptr: ") @*) [Imp.Expr(Imp.Call("print_ptr", [Imp.Var("x")]))]
-                                )]
-                        );
+        code        =   [Imp.If(is_int, 
+                                    (print_str "int: ")
+                                    @ [Imp.Set("x", Binop(Div, Binop(Sub,Imp.Var("x"), Imp.Cst(1)), Imp.Cst(2)))]
+                                    @ [Imp.If(Binop(Gt, Imp.Var("x"), Binop(Sub, max_, Cst 1)), [Imp.Set("x", neg_x)], [])]
+                                    @ [Imp.Expr(Imp.Call("print_int", [Imp.Var("x")]))],
+                                    
+                                    [Imp.Expr(Imp.Call("print_ptr", [Imp.Var("x")]))]
+                                );
                         Imp.Return(Imp.Cst(0))
                         ];
         params      = ["x"];
