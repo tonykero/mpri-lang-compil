@@ -171,7 +171,8 @@ let translate_program prog =
                     , [])]
                     @ [Imp.While(iltsize, [
                         Imp.Expr(Imp.Call("print", [Imp.array_get (Imp.Var("x")) (Imp.Var("i")) ]))]
-                    @   print_str ", "
+                    @   [Imp.If(Binop(Neq, Imp.Var("i"), Binop(Sub, Imp.Var("size"), Cst 1)), print_str ", ", [])]
+                    
                     @   [iinc]
                     )]
                     @  print_str ")"
@@ -186,7 +187,7 @@ let translate_program prog =
                                 (print_str "bool: ") @ [Imp.Expr(Imp.Call("print_bool", [Imp.Var("x")]))],
                                 [Imp.If(is_int, 
                                     (print_str "int: ") @ [Imp.Expr(Imp.Call("print_int", [Binop(Lsr, Binop(Sub,Imp.Var("x"), Imp.Cst(1)), Imp.Cst(1))]))],
-                                    (print_str "ptr: ") @ [Imp.Expr(Imp.Call("print_ptr", [Imp.Var("x")]))]
+                                    (*(print_str "ptr: ") @*) [Imp.Expr(Imp.Call("print_ptr", [Imp.Var("x")]))]
                                 )]
                         );
                         Imp.Return(Imp.Cst(0))
