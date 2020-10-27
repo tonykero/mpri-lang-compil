@@ -32,26 +32,28 @@ let match_int op ret = match op with
                                             in r
                         | _ -> []
 
+let bool_to_int b = if b then 1 else 0
+
 let rec to_instr expr = match expr with
         | Cst(i)            -> set_instr "res" (Imp.Cst (2*i+1))
-        | Bool(b)           -> set_instr "res" (Imp.Bool b)
+        | Bool(b)           -> set_instr "res" (Imp.Cst (2*(bool_to_int b)+1))
         | Var(v)            -> let r = match v with
                                 | Name str -> set_instr "res" (Imp.Var(str))
                                 | _ -> failwith "cvar" in r
         | _ -> failwith "to_instr: CLJ2IMP: expression not implemented"
 and to_seq expr = match expr with
         | Unop(op, e)      ->   to_seq e
-                        @       match_int expr (to_int)
+                        @       [to_int]
                         @       [(set_instr "res" (Imp.Unop(op, (Imp.Var("res")))))]
-                        @       match_int expr (to_caml_int)
+                        @       [to_caml_int]
         | Binop(op, e1, e2) ->  let var = new_var () in
                                 to_seq e1
-                        @       match_int expr (to_int)
+                        @       [to_int]
                         @       [(set_instr var (Imp.Var "res"))]
                         @       to_seq e2
-                        @       match_int expr (to_int)
+                        @       [to_int]
                         @       [(set_instr "res" (Imp.Binop(op, (Imp.Var(var)), Imp.Var("res"))))]
-                        @       match_int expr (to_caml_int)
+                        @       [to_caml_int]
         | Tpl(se)           ->  let arr_size = List.length se in
                                 let arr_var  = new_var () in
                                 let arr_malloc = (Imp.array_create (Cst (arr_size+1))) in
@@ -132,7 +134,7 @@ let translate_program prog =
         params      = ["size"];
         locals      = [] 
         } in
-    let is_int  = Imp.Binop(Ops.Land, Imp.Var("x"),Imp.Cst(1)) in
+    let is_int  = Imp.Binop(Or,Imp.Binop(Ops.Eq, Imp.Var("x"),Imp.Cst(0)),Imp.Binop(Ops.Land, Imp.Var("x"),Imp.Cst(1))) in
     (* https://stackoverflow.com/a/10069969 *)
     let explode s =
         let rec exp i l =

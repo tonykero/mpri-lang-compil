@@ -18,7 +18,7 @@ let rec type_of expr = match expr with
         | Unop(op,e)    -> let rt = match op with
                             | Minus -> TInt
                             | Not   -> TBool
-                            in if rt == (type_of e) then
+                            in if rt = (type_of e) then
                                     rt
                                 else failwith "incompatible type in unary operation"
         | Binop(op,e1,e2)-> let rt = match op with
@@ -26,19 +26,25 @@ let rec type_of expr = match expr with
                                 -> TInt
                             | Eq  | Neq | Lt  | Le  | Gt  | Ge | And | Or
                                 -> TBool
-                            in if (type_of e1) == (type_of e2) then
-                                    if rt == (type_of e1) then
-                                        rt
-                                    else failwith "incompatible type in binary operation"
+                            in if (type_of e1) = (type_of e2) then
+                                    rt
                                 else failwith "type mismatch in binary operation"
         | Pair(e1,e2)   -> TPair(type_of e1, type_of e2)
         | Fst(e)        -> let r = match e with
-                            | Pair(e1,_) -> type_of e1
-                            | _ -> failwith "fst on non-pair type"
+                            | Var(s) -> let var_ty = Hashtbl.find sym_table s in
+                                        let rt= match var_ty with
+                                        | TPair(t1,_) -> t1
+                                        | _ -> failwith "fst on non-pair type"
+                                        in rt
+                            | _ -> failwith "fst on non variable"
                             in r
         | Snd(e)        -> let r = match e with
-                            | Pair(_,e2) -> type_of e2
-                            | _ -> failwith "snd on non-pair type"
+                            | Var(s) -> let var_ty = Hashtbl.find sym_table s in
+                                        let rt= match var_ty with
+                                        | TPair(_,t2) -> t2
+                                        | _ -> failwith "snd on non-pair type"
+                                        in rt
+                            | _ -> failwith "snd on non variable"
                             in r
         | Struct(l)     ->  let map_f:(string*expression) -> (string*ty) = (fun p -> (fst p,type_of (snd p))) in
                             let r = try 
@@ -68,13 +74,13 @@ let rec type_of expr = match expr with
         (*Struct & StrGet*)
         | Fun(s,t,e)    -> Hashtbl.add sym_table s t;TFun(t, (type_of e))
         | App(e1,e2)    -> let r = match (type_of e1) with 
-                            | TFun(ta,tb) -> if ta == (type_of(e2)) then
+                            | TFun(ta,tb) -> if ta = (type_of(e2)) then
                                                 tb
                                             else failwith "incompatible type in function application"
                             | _ -> failwith "application on non-function type"
                             in r
-        | If(c,e1,e2)   ->  if (type_of c) == TBool then
-                                if (type_of e1) == (type_of e2) then
+        | If(c,e1,e2)   ->  if (type_of c) = TBool then
+                                if (type_of e1) = (type_of e2) then
                                     type_of e1
                                 else failwith "if branches gives different types"
                             else failwith "if condition is not a boolean"
@@ -82,12 +88,35 @@ let rec type_of expr = match expr with
         | LetRec(s,t,e1,e2) -> Hashtbl.add sym_table s (TFun(t,type_of e1));(type_of e2)
         | _ -> failwith "TYPE_OF: expr not implemented"
 
-let rec tr_expr expr = match expr with
+let rec structural_eq e1 e2 = match type_of e1 with
+        | TInt | TBool | TFun(_,_) -> Fun.Binop(Eq, tr_expr e1, tr_expr e2)
+        | TPair(t1,t2) ->   let eq1 = structural_eq (Fst e1) (Fst e2) in
+                            let eq2 =  structural_eq (Snd e1) (Snd e2) in
+                            let r   = Fun.Binop(And, eq1, eq2) in
+                            r
+        | TNamed(struct_name)    ->   let ntuple_name_list = List.map (fun p -> fst p) !namedtuples in
+                            let index = index_of struct_name ntuple_name_list in
+                            let ntuple = snd (List.nth !namedtuples index) in
+                            let var_name_list = List.map (fun p -> fst p) ntuple in
+                            let r = (List.fold_right
+                                    (fun field tree -> 
+                                        let eq1 = structural_eq (StrGet(e1,field)) (StrGet(e2,field)) in
+                                        let eq = Fun.Binop(And, eq1,tree) in
+                                        eq
+                                    )
+                                    var_name_list (Bool true))
+                            in r
+
+        | _ -> failwith "structural equality not implemented"
+and tr_expr expr = match expr with
         | Cst i             -> Fun.Cst(i)
         | Bool b            -> Fun.Bool(b)
         | Var str           -> Fun.Var(str)
         | Unop(o, e)        -> Fun.Unop(o, tr_expr e)
-        | Binop(o,e1,e2)    -> Fun.Binop(o, tr_expr e1, tr_expr e2)
+        | Binop(o,e1,e2)    -> if o = Eq then
+                                    structural_eq e1 e2
+                                else
+                                Fun.Binop(o, tr_expr e1, tr_expr e2)
         | Pair(e1,e2)       -> Fun.Tpl([tr_expr e1; tr_expr e2])
         | Fst(e)            -> Fun.TplGet(tr_expr e, 0)
         | Snd(e)            -> Fun.TplGet(tr_expr e, 1)
