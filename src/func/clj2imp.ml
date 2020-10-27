@@ -1,5 +1,5 @@
 open Clj
-
+open Ops
 
 let is_in el l = List.exists (fun e -> el = e) l
 
@@ -20,9 +20,20 @@ let new_var =
         add_var var_name;var_name
 
 let rec set_instr str e = Imp.Set(str, e)
+let to_int      = set_instr "res" (Binop(Ops.Lsr, Binop(Ops.Sub, Imp.Var("res"), Imp.Cst(1)), Imp.Cst(1)))
+let to_caml_int = set_instr "res" (Binop(Ops.Add, Binop(Ops.Lsl, Imp.Var("res"), Imp.Cst(1)), Imp.Cst(1)))
+
+let match_int op ret = match op with
+                        | Unop(o,_) -> if o == Minus then [ret] else []
+                        | Binop(o,_,_) -> let r = match o with
+                                            | Add | Sub | Mul | Div | Rem | Lsl | Lsr | Land | Lor
+                                                -> [ret]
+                                            | _ -> []
+                                            in r
+                        | _ -> []
 
 let rec to_instr expr = match expr with
-        | Cst(i)            -> set_instr "res" (Imp.Cst i)
+        | Cst(i)            -> set_instr "res" (Imp.Cst (2*i+1))
         | Bool(b)           -> set_instr "res" (Imp.Bool b)
         | Var(v)            -> let r = match v with
                                 | Name str -> set_instr "res" (Imp.Var(str))
@@ -30,13 +41,17 @@ let rec to_instr expr = match expr with
         | _ -> failwith "to_instr: CLJ2IMP: expression not implemented"
 and to_seq expr = match expr with
         | Unop(op, e)      ->   to_seq e
+                        @       match_int expr (to_int)
                         @       [(set_instr "res" (Imp.Unop(op, (Imp.Var("res")))))]
+                        @       match_int expr (to_caml_int)
         | Binop(op, e1, e2) ->  let var = new_var () in
                                 to_seq e1
+                        @       match_int expr (to_int)
                         @       [(set_instr var (Imp.Var "res"))]
                         @       to_seq e2
+                        @       match_int expr (to_int)
                         @       [(set_instr "res" (Imp.Binop(op, (Imp.Var(var)), Imp.Var("res"))))]
-        
+                        @       match_int expr (to_caml_int)
         | Tpl(se)           ->  let arr_size = List.length se in
                                 let arr_var  = new_var () in
                                 let arr_malloc = (Imp.array_create (Cst arr_size)) in
@@ -109,10 +124,46 @@ let translate_program prog =
         params      = ["size"];
         locals      = [] 
         } in
+    let eq_1    = Imp.Binop(Ops.Eq, Imp.Var("x"), Imp.Cst(1)) in
+    let eq_0    = Imp.Binop(Ops.Eq, Imp.Var("x"), Imp.Cst(0)) in
+    let eq_01   = Imp.Binop(Ops.Or, eq_0, eq_1) in
+    let is_int  = Imp.Binop(Ops.Land, Imp.Var("x"),Imp.Cst(1)) in
+    
+    let explode s =
+        let rec exp i l =
+        if i < 0 then l else exp (i - 1) (s.[i] :: l) in
+        exp (String.length s - 1) [] in
+    let print_str str = List.fold_right 
+                            (fun (c:char) (seq:Imp.instruction list) ->
+                                let ci:int = Char.code c in
+                                [Imp.Expr(Imp.Call("putchar", [Imp.Cst(ci)]))] @ seq
+                                )
+                                (explode str) [] in
+    let print_bool_def:Imp.function_def = {
+        name        = "print_bool";
+        code        = [Imp.If(Imp.Var("x"),print_str "true", print_str "false");
+                        Imp.Return(Imp.Cst(0))];
+        params      = ["x"];
+        locals      = []
+    } in
+    let print_def:Imp.function_def = {
+        name        = "print";
+        code        =   [Imp.If(eq_01, 
+                                (print_str "bool: ") @ [Imp.Expr(Imp.Call("print_bool", [Imp.Var("x")]))],
+                                [Imp.If(is_int, 
+                                    (print_str "int: ") @ [Imp.Expr(Imp.Call("print_int", [Binop(Lsr, Binop(Sub,Imp.Var("x"), Imp.Cst(1)), Imp.Cst(1))]))],
+                                    (print_str "ptr: ") @ [Imp.Expr(Imp.Call("print_int", [Imp.Var("x")]))]
+                                )]
+                        );
+                        Imp.Return(Imp.Cst(0))
+                        ];
+        params      = ["x"];
+        locals      = []
+        } in
     let code_instr  = to_seq prog.code in
-    let main        = code_instr @ [Imp.Expr(Imp.Call("print_int", [Var("res")]))] in
+    let main        = code_instr @ [Imp.Expr(Imp.Call("print", [Var("res")]))] in
     let functions   = (List.fold_left (fun defs fundef -> defs @ [tr_fun_def fundef] )
-                        [malloc_def] prog.functions
+                        [malloc_def;print_def;print_bool_def] prog.functions
                         )
                         in
     let globals     = !globals in
