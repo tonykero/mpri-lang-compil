@@ -1,7 +1,7 @@
-type point = {x: int; y: int}
+type point = {x: int; y: int; z: int}
 let f (x: int) (y: int) = x + y in
-let p = {x=6; y=6} in
-let o = {x=6; y=6} in
+let p = {x=6; y=6; z=8} in
+let o = {x=6; y=6; z=8} in
 let u = (5,6) in
 let v = (5,6) in
 (p = o) && (u = v)
