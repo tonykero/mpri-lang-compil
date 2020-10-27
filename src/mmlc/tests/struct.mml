@@ -1,4 +1,4 @@
 type point = {x: int; y: int}
 let f (x: int) (y: int) = x + y in
 let p = {x=6; y=6} in
-(f (p.x) (p.y)) * 3 + p.y
+p
