@@ -54,8 +54,12 @@ and to_seq expr = match expr with
                         @       match_int expr (to_caml_int)
         | Tpl(se)           ->  let arr_size = List.length se in
                                 let arr_var  = new_var () in
-                                let arr_malloc = (Imp.array_create (Cst arr_size)) in
+                                let arr_malloc = (Imp.array_create (Cst (arr_size+1))) in
                                 [(set_instr (arr_var) (arr_malloc))]
+                                (*store size in header*)
+                        @       [Imp.array_set (Imp.Var arr_var) (Cst 0) (Binop(Lsl, (Cst arr_size), Cst 1)) ]
+                        @       [set_instr (arr_var) (Binop(Add, Imp.Var(arr_var), Cst 4))]
+                        
                         @       (List.fold_right2 (fun expr idx seq ->
                                                         to_seq expr
                                                 @       [Imp.array_set (Imp.Var arr_var) (Cst idx) (Imp.Var "res") ]
@@ -68,7 +72,11 @@ and to_seq expr = match expr with
         | FunRef(str)       ->  [set_instr "res" (Imp.Addr(str))]
         | Clos(str, fvars)  ->  let arr_size = ((List.length fvars) + 1) in
                                 let vars = List.map (fun str -> Imp.Var(str)) fvars in
-                                [set_instr "res" (Imp.array_create (Cst arr_size))]
+                                [set_instr "res" (Imp.array_create (Cst (arr_size+1)))]
+                            (*store size in header*)
+                            @   [Imp.array_set (Imp.Var "res") (Cst 0) (Binop(Add, Binop(Lsl, (Cst arr_size), Cst 1), Cst 1)) ]
+                            @   [set_instr ("res") (Binop(Add, Imp.Var("res"), Cst 4))]
+                            
                             @   (List.fold_right2 (fun expr idx seq ->
                                                         let arr_set = Imp.array_set (Imp.Var "res") (Cst idx) expr in
                                                         [ arr_set ] @ seq
@@ -128,7 +136,7 @@ let translate_program prog =
     let eq_0    = Imp.Binop(Ops.Eq, Imp.Var("x"), Imp.Cst(0)) in
     let eq_01   = Imp.Binop(Ops.Or, eq_0, eq_1) in
     let is_int  = Imp.Binop(Ops.Land, Imp.Var("x"),Imp.Cst(1)) in
-    
+    (* https://stackoverflow.com/a/10069969 *)
     let explode s =
         let rec exp i l =
         if i < 0 then l else exp (i - 1) (s.[i] :: l) in
@@ -146,13 +154,39 @@ let translate_program prog =
         params      = ["x"];
         locals      = []
     } in
+    let i_init i= Imp.Set("i", i) in
+    let iltsize = Imp.Binop(Lt, Imp.Var("i"), Imp.Var("size")) in
+    let iinc = Imp.Set("i", Binop(Add, Imp.Var("i"), Cst 1)) in
+    let first_elem = Imp.array_get (Imp.Var("x")) (Cst 0) in
+    let print_ptr_def:Imp.function_def = {
+        name        = "print_ptr";
+        code        = [Imp.Set("size", Binop(Lsr, Imp.Deref(Binop(Sub, Imp.Var("x"), Cst 4)), Cst 1));
+                        Imp.Set("is_clos", Binop(Land, Imp.Deref(Binop(Sub, Imp.Var("x"), Cst 4)), Cst 1))]
+                    @ (print_str "(")
+                    @ [i_init (Imp.Var("is_clos"))]
+                    @ [Imp.If(Imp.Var("is_clos"),
+                        (print_str "closure: ")
+                    @   [Imp.Expr(Imp.Call("print_int", [first_elem ]))]
+                    @   (print_str ", ")
+                    , [])]
+                    @ [Imp.While(iltsize, [
+                        Imp.Expr(Imp.Call("print", [Imp.array_get (Imp.Var("x")) (Imp.Var("i")) ]))]
+                    @   print_str ", "
+                    @   [iinc]
+                    )]
+                    @  print_str ")"
+                    @  [Imp.Return(Imp.Cst(0))]
+        ;
+        params = ["x"];
+        locals = ["i";"size";"is_clos"];
+    } in
     let print_def:Imp.function_def = {
         name        = "print";
         code        =   [Imp.If(eq_01, 
                                 (print_str "bool: ") @ [Imp.Expr(Imp.Call("print_bool", [Imp.Var("x")]))],
                                 [Imp.If(is_int, 
                                     (print_str "int: ") @ [Imp.Expr(Imp.Call("print_int", [Binop(Lsr, Binop(Sub,Imp.Var("x"), Imp.Cst(1)), Imp.Cst(1))]))],
-                                    (print_str "ptr: ") @ [Imp.Expr(Imp.Call("print_int", [Imp.Var("x")]))]
+                                    (print_str "ptr: ") @ [Imp.Expr(Imp.Call("print_ptr", [Imp.Var("x")]))]
                                 )]
                         );
                         Imp.Return(Imp.Cst(0))
@@ -163,7 +197,10 @@ let translate_program prog =
     let code_instr  = to_seq prog.code in
     let main        = code_instr @ [Imp.Expr(Imp.Call("print", [Var("res")]))] in
     let functions   = (List.fold_left (fun defs fundef -> defs @ [tr_fun_def fundef] )
-                        [malloc_def;print_def;print_bool_def] prog.functions
+                        [malloc_def;
+                        print_def;
+                        print_bool_def;
+                        print_ptr_def] prog.functions
                         )
                         in
     let globals     = !globals in

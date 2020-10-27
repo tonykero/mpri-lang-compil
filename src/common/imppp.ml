@@ -38,7 +38,7 @@ let rec pp_expression: expression -> string = function
   | Deref(Binop(Add, Var t, Binop(Mul, e, Cst 4))) ->
     sprintf "%s[%s]" t (pp_expression e)
   | Deref(e) ->
-    sprintf "*%s" (pp_expression e)
+    sprintf "(*%s)" (pp_expression e)
   | Addr(x) ->
     "&" ^ x
   | PCall(f, args) ->
