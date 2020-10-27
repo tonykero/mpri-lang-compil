@@ -15,6 +15,14 @@ let add_fun name param code free_vars =
 
 let strneq str = fun el -> not (el = str)
 
+let rec uniq =
+function
+  | []       -> []
+  | x::[]    -> x::[]
+  | x::y::tl ->
+     if x=y then uniq (y::tl)
+     else x::uniq (y::tl)
+
 let rec get_free_vars expr = let fvars = match expr with
         | Cst(_) -> []
         | Bool(_) -> []
@@ -32,7 +40,8 @@ let rec get_free_vars expr = let fvars = match expr with
         | LetRec(str,e1,e2) ->   let free_vars = get_free_vars e1 @ get_free_vars e2 in
                                 Printf.printf "str = %s\n" str;List.filter (strneq str) free_vars
         in
-        List.sort_uniq (fun a b -> (String.length a) - (String.length b)) fvars
+        let fvars = List.sort (fun a b -> (String.length a) - (String.length b)) fvars in
+        uniq fvars
 
 let rec tr_expr expr = match expr with
         | Cst(i)            -> Clj.Cst(i)
